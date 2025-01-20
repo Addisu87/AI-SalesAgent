@@ -2,3 +2,6 @@ fastapi
 uvicorn
 elevenlabs
 python-dotenv
+groq
+langchain-core
+redis
