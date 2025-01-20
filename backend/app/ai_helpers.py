@@ -5,13 +5,15 @@ from core.config import Config
 from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
 from groq import Groq
+from langchain import LLMChain
 from tools import tools_info
 
 from app.utils.prompts import (
     AGENT_PROMPT_INBOUND_TEMPLATE,
     AGENT_STARTING_PROMPT_TEMPLATE,
+    STAGE_TOOL_ANALYZER_PROMPT,
 )
-from app.utils.stages import OUTBOUND_CONVERSATION_STAGES, STAGE_TOOL_ANAYLZING_PROMPT
+from app.utils.stages import OUTBOUND_CONVERSATION_STAGES
 
 router = APIRouter()
 
@@ -37,6 +39,11 @@ def gen_ai_output(prompt):
         model="gpt-4o-mini", messages=prompt, temperature=0.5, max_token=100
     )
     return response.choices[0].message.content
+
+
+def process_langchain_prompt(self, template: str, variables: dict):
+    chain = LLMChain.from_template(template)
+    return chain.run(variables)
 
 
 def is_tool_required(ai_output):
@@ -104,7 +111,7 @@ async def invoke_stage_tool_analysis(
         ]
     )
 
-    intent_tool_prompt = STAGE_TOOL_ANAYLZING_PROMPT.format(
+    intent_tool_prompt = STAGE_TOOL_ANALYZER_PROMPT.format(
         salesperson_name=config["salesperson_name"],
         company_name=config["company_name"],
         company_business=config["company_business"],

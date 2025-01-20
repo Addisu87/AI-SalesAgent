@@ -12,6 +12,8 @@ from fastapi.responses import FileResponse, JSONResponse
 from twilio.rest import Client
 from twilio.twiml.voice_response import Gather, VoiceResponse
 
+from app.audio_helpers import save_audio_file, text_to_speech
+
 router = APIRouter()
 
 logger = logging.getLogger(__name__)

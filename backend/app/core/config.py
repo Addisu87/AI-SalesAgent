@@ -22,6 +22,9 @@ class Config:
     ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY")
     VOICE_ID = os.getenv("VOICE_ID")
 
+    REDIS_PORT = int(os.getenv("REDIS_PORT", 6379))
+    REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
+
     # Company Details
     COMPANY_NAME = os.getenv("COMPANY_NAME")
     COMPANY_BUSINESS = os.getenv("COMPANY_BUSINESS")

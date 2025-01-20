@@ -1,13 +1,11 @@
-import logging
-
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.routers.serve_audio import router as audio_router
+from app.utils.tools import setup_logger
 
 # Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+logger = setup_logger("Main")
 
 
 app = FastAPI()
@@ -25,4 +23,11 @@ app.include(audio_router)
 
 @app.get("/")
 def main():
-    return {"Hello": "World"}
+    return {"message": "AI Sales Agent is running!"}
+
+
+# @app.post("/sales")
+# def handle_sales(query: str):
+#     logger.info("Received query from user")
+#     response = ai_helper.generate_response(f"{Prompts.WELCOME_MESSAGE} {query}")
+#     return {"response": response}

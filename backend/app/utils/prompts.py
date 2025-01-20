@@ -29,3 +29,9 @@ STAGE_TOOL_ANALYZER_PROMPT.format(
 
 # Instantiation using initializer
 prompt = PromptTemplate(template="Say {foo}")
+
+
+class Prompts:
+    WELCOME_MESSAGE = "Welcome to our virtual sales assistant. How can I assist you today?"
+    QUALIFY_LEAD = "Ask the user about their business needs and goals to qualify them as a potential lead."
+    SALES_PITCH = "Provide a tailored sales pitch based on the customer's needs."
