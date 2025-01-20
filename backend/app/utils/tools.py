@@ -11,3 +11,7 @@ def setup_logger(name: str):
     handler.setFormatter(formatter)
     logger.addHandler(handler)
     return logger
+
+
+def tools_info():
+    pass

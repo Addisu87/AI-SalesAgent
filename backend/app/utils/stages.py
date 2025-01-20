@@ -16,3 +16,6 @@ class SalesStages:
             return stages[stages.index(current_stage) + 1]
         except (ValueError, IndexError):
             return None
+
+
+OUTBOUND_CONVERSATION_STAGES = "stages...."
