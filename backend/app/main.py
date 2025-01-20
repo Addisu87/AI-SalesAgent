@@ -1,13 +1,8 @@
 import logging
-import os
 
-
-
-from fastapi import FastAPI, Session
+from fastapi import FastAPI
 
 from app.routers.serve_audio import router as audio_router
-
-
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
