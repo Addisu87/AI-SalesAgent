@@ -5,7 +5,7 @@ import uuid
 
 import redis
 from core.config import Config
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, url_for
 from fastapi.responses import FileResponse, JSONResponse
 from twilio.rest import Client
 from twilio.twiml.voice_response import Gather, VoiceResponse
@@ -15,6 +15,7 @@ from app.ai_helpers import (
     delayed_delete,
     gen_ai_output,
     get_config,
+    get_conversation_stage,
     get_tool_details,
     is_tool_required,
 )
@@ -34,13 +35,13 @@ client = Client(Config.TWILIO_ACCOUNT_SID, Config.TWILIO_AUTH_TOKEN)
 
 # Routes
 @router.get("/audio/{filename}")
-async def serve_audio(filename: str):
+async def serve_audio(filename: str, background_tasks: BackgroundTasks):
     """Serve audio file from directory."""
     directory = "audio_files"
     full_path = os.path.join(directory, filename)
     try:
         response = FileResponse(full_path)
-        delayed_delete(full_path)
+        background_tasks.add_task(delayed_delete, full_path)
         return response
     except FileNotFoundError:
         logger.error(f"Audio file not found: {filename}")
@@ -80,8 +81,11 @@ async def start_call(request: Request):
     redis_client.set(unique_id, json.dumps(message_history))
 
     response = VoiceResponse()
-    response.play(f"/audio/{audio_filename}")
-    response.redirect(f"{Config.API_PUBLIC_GATHER_URL}?CallSid={unique_id}")
+    audio_url = url_for("serve_audio", filename=audio_filename, _external=True)
+    response.play(audio_url)
+
+    gather_url = url_for("gather_input", _external=True, CallSid=unique_id)
+    response.redirect(gather_url)
 
     call = client.calls.create(
         twiml=str(response),
@@ -99,14 +103,17 @@ async def gather_input(request: Request):
     """Endpoint to gather customer speech input."""
     call_sid = request.query_params.get("CallSid", "default_sid")
     resp = VoiceResponse()
+    process_speech_url = url_for("process_speech", _external=True, CallSid=call_sid)
     gather = Gather(
         input="speech",
-        action=f"/process-speech?CallSid={call_sid}",
+        action=process_speech_url,
         speechTimeout="auto",
         method="POST",
     )
     resp.append(gather)
-    resp.redirect(f"/gather?CallSid={call_sid}")
+
+    gather_url = url_for("gather_input", _external=True, CallSid=call_sid)
+    resp.redirect(gather_url)
     return str(resp)
 
 
@@ -132,26 +139,6 @@ async def process_initial_message(
             "content": f"Customer Name: {customer_name}. Problem: {customer_problem}",
         },
     ]
-
-    response = gen_ai_output(message_to_send_to_ai)
-    return response
-
-
-@router.post("/process_initial_message")
-async def process_initial_message(
-    customer_name: str, customer_problem: str, config: dict = Depends(get_config)
-):
-    initial_prompt = AGENT_STARTING_PROMPT_TEMPLATE.format(
-        salesperson_name=config["salesperson_name"],
-        company_name=config["company_name"],
-        company_business=config["company_business"],
-        conversation_purpose=config["conversation_purpose"],
-        conversation_stages=config["conversation_stages"],
-    )
-
-    message_to_send_to_ai = [{"role": "system", "content": initial_prompt}]
-    initial_transcript = f"Customer Name: {customer_name}. Customer filled up details in the website: {customer_problem}"
-    message_to_send_to_ai.append({"role": "user", "content": initial_transcript})
 
     response = gen_ai_output(message_to_send_to_ai)
     return JSONResponse(content={"response": response})
