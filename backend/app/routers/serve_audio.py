@@ -5,10 +5,19 @@ import uuid
 
 import redis
 from core.config import Config
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, url_for
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Depends,
+    HTTPException,
+    Request,
+    status,
+    url_for,
+)
 from fastapi.responses import FileResponse, JSONResponse
 from twilio.rest import Client
 from twilio.twiml.voice_response import Gather, VoiceResponse
+from werkzeug.utils import secure_filename
 
 from app.ai_helpers import (
     clean_response,
@@ -118,7 +127,7 @@ async def gather_input(request: Request):
 
 
 @router.get("/gather-inbound")
-async def gather_input_inbound():
+async def gather_input_inbound(call_sid: str):
     """Gathers customer's speech input for both inbound and outbound calls."""
     resp = VoiceResponse()
     print("Initializing for inbound call...")
@@ -129,7 +138,9 @@ async def gather_input_inbound():
     audio_file_path = save_audio_file(audio_data)
     audio_filename = os.path.basename(audio_file_path)
     resp.play(
-        url_for("serve_audio", filename=secure_filename(audio_filename)),
+        url_for(
+            "serve_audio", filename=secure_filename(audio_filename)
+        ),  # Corrected here
         _external=True,
         CallSid=call_sid,
     )
@@ -148,7 +159,7 @@ async def process_speech(request: Request):
     message_history_json = redis_client.get(call_sid)
     message_history = json.loads(message_history_json) if message_history_json else []
 
-    ai_response_text = process_message(message_history, speech_result)
+    ai_response_text = await process_message(message_history, speech_result)
     response_text = clean_response(ai_response_text)
     audio_data = text_to_speech(response_text)
     audio_file_path = save_audio_file(audio_data)
@@ -158,30 +169,29 @@ async def process_speech(request: Request):
     resp.play(
         url_for(
             "serve_audio",
-            filename=secure_filname(audio_filename),
+            filename=secure_filename(audio_filename),
             _external=True,
             CallSid=call_sid,
         )
     )
-    if "<END_OF_CALL>" in ai_response_text: 
+    if "<END_OF_CALL>" in ai_response_text:
         print("The conversation has ended.")
         resp.hangup()
-        
-        
+
     resp.redirect(url_for("gather_input", CallSid=call_sid))
     message_history.append({"role": "user", "content": speech_result})
     message_history.append({"role": "assistant", "content": response_text})
     redis_client.set(call_sid, json.dumps(message_history))
     return str(resp)
 
+
 @router.post("/event")
 async def event(request: Request):
     """Handle status callback from Twillo calls."""
     call_status = request.values.get("CallStatus", "")
     if call_status in ["completed", "busy", "failed"]:
-        logger.info(f"call completed with status": {call_status})
-    return "", 204
-
+        logger.info(f"call completed with status: {call_status}")
+    return JSONResponse(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.post("/process_initial_message")
@@ -292,7 +302,3 @@ async def process_message(
     message_to_send_to_ai_final.append({"role": "user", "content": user_input})
     talkback_response = gen_ai_output(message_to_send_to_ai_final)
     return JSONResponse(content={"response": talkback_response})
-
-
-if __name__ == "__main__":
-    router.run(debug=True, host="0.0.0.0.", port=5000)

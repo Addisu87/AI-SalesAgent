@@ -1,7 +1,8 @@
 from langchain_core.prompts import PromptTemplate
 
+
 # Instantiation using from_template (recommended)
-STAGE_TOOL_ANALYZER_PROMPT = PromptTemplate.from_template(
+AGENT_TOOL_ANALYZER_PROMPT = PromptTemplate.from_template(
     """You are a sales assistant helping your sales agent to determine the next stage of conversation to move to when taking to a user and decide if a sales agent company has following Products:{company_products_services}.
     ===
     {conversation_history}
