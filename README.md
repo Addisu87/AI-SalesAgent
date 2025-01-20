@@ -6,7 +6,8 @@ Below is the description of each file and their purpose in the project.
 
 - **.env_sample**: A sample environment variable file that should be copied to `.env` for configuring the application secrets and settings.
 - **ai_helpers.py**: Contains helper functions for AI operations, such as interacting with machine learning models and APIs.
-- **main.py**: The main fastapi python application file.
+- **audio_helpers.py**: Includes functions to handle audio processing tasks within the application, such as audio file manipulation or audio stream processing using ElevenLabs API.
+- **main.py**: The main fastAPI python application file.
 - **server-audio.py** It defines HTTP routes and the web server logic.
 - **config.py**: Configuration file or setting up global variables and settings.
 - **prompts.py**: Likely includes predefined prompts for different logic within this application.
