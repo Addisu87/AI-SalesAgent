@@ -117,6 +117,73 @@ async def gather_input(request: Request):
     return str(resp)
 
 
+@router.get("/gather-inbound")
+async def gather_input_inbound():
+    """Gathers customer's speech input for both inbound and outbound calls."""
+    resp = VoiceResponse()
+    print("Initializing for inbound call...")
+    unique_id = str(uuid.uuid4())
+    message_history = []
+    agent_response = initiate_inbound_message()
+    audio_data = text_to_speech(agent_response)
+    audio_file_path = save_audio_file(audio_data)
+    audio_filename = os.path.basename(audio_file_path)
+    resp.play(
+        url_for("serve_audio", filename=secure_filename(audio_filename)),
+        _external=True,
+        CallSid=call_sid,
+    )
+    message_history.append({"role": "assistant", "content": agent_response})
+    redis_client.set(unique_id, json.dumps(message_history))
+    resp.redirect(url_for("gather_input", CallSid=call_sid))
+    return str(resp)
+
+
+@router.post("/process-speech")
+async def process_speech(request: Request):
+    "Process customer's speech input and generates a response."
+    speech_result = request.values.get("SpeechResult", "").strip()
+    call_sid = request.args.get("CallSid", "default_sid")
+    print(call_sid)
+    message_history_json = redis_client.get(call_sid)
+    message_history = json.loads(message_history_json) if message_history_json else []
+
+    ai_response_text = process_message(message_history, speech_result)
+    response_text = clean_response(ai_response_text)
+    audio_data = text_to_speech(response_text)
+    audio_file_path = save_audio_file(audio_data)
+    audio_filename = os.path.basename(audio_file_path)
+
+    resp = VoiceResponse()
+    resp.play(
+        url_for(
+            "serve_audio",
+            filename=secure_filname(audio_filename),
+            _external=True,
+            CallSid=call_sid,
+        )
+    )
+    if "<END_OF_CALL>" in ai_response_text: 
+        print("The conversation has ended.")
+        resp.hangup()
+        
+        
+    resp.redirect(url_for("gather_input", CallSid=call_sid))
+    message_history.append({"role": "user", "content": speech_result})
+    message_history.append({"role": "assistant", "content": response_text})
+    redis_client.set(call_sid, json.dumps(message_history))
+    return str(resp)
+
+@router.post("/event")
+async def event(request: Request):
+    """Handle status callback from Twillo calls."""
+    call_status = request.values.get("CallStatus", "")
+    if call_status in ["completed", "busy", "failed"]:
+        logger.info(f"call completed with status": {call_status})
+    return "", 204
+
+
+
 @router.post("/process_initial_message")
 async def process_initial_message(
     customer_name: str,
@@ -225,3 +292,7 @@ async def process_message(
     message_to_send_to_ai_final.append({"role": "user", "content": user_input})
     talkback_response = gen_ai_output(message_to_send_to_ai_final)
     return JSONResponse(content={"response": talkback_response})
+
+
+if __name__ == "__main__":
+    router.run(debug=True, host="0.0.0.0.", port=5000)
