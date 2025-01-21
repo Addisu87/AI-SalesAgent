@@ -14,7 +14,7 @@ from app.utils.prompts import (
     GYM_AGENT_PROMPT,
     STAGE_TOOL_ANALYZER_PROMPT,
 )
-from app.utils.stages import conversation_stage
+from app.utils.stages import conversation_stages
 from app.utils.tools import (
     appointment_availability,
     calendly_meeting,
@@ -41,7 +41,7 @@ def get_config():
         "company_business": Config.COMPANY_BUSINESS,
         "conversation_purpose": Config.CONVERSATION_PURPOSE,
         "company_products_services": Config.COMPANY_PRODUCTS_SERVICES,
-        "conversation_stage": conversation_stage,
+        "conversation_stage": conversation_stages,
     }
 
 
@@ -49,14 +49,18 @@ def gen_ai_output(prompt):
     """Generate AI response based on the provided prompt."""
     try:
         response = client.chat.completions.create(
-            model="gpt-4o-mini", messages=prompt, temperature=0.5, max_tokens=100
+            model="gpt-4o-mini",
+            messages=prompt,
+            temperature=0.5,
+            max_tokens=150,
         )
         return response.choices[0].message.content
     except Exception as e:
         logger.error(f"Error generating AI output: {e}")
         raise HTTPException(status_code=500, detail="AI generation error")
 
-    # Utility Functions
+
+# Utility Functions
 
 
 def clean_response(unfiltered_response_text):
@@ -111,6 +115,14 @@ async def get_tool_details(ai_output):
         return tool_name, tool_parameters
     except json.JSONDecodeError:
         raise ValueError("Invalid JSON format in AI output.")
+
+
+async def initiate_inbound_message():
+    initial_prompt = GYM_AGENT_PROMPT.format(
+        salesperson_name=salesperson_name,
+        company_name=company_name,
+    )
+    return initial_prompt
 
 
 async def process_initial_message(
@@ -193,9 +205,9 @@ async def process_message(
                     tool_output = calendly_meeting()
                 case "OnsiteAppointment":
                     tool_output = onsite_appointment()
-                case "GymAppointmentAvailablitiy":
+                case "GymAppointmentAvailability":
                     tool_output = appointment_availability()
-                case "PriceInquity":
+                case "PriceInquiry":
                     tool_output = fetch_product_price(params)
                 case _:
                     return JSONResponse(content={"response": ""})

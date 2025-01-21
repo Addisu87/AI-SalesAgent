@@ -19,6 +19,7 @@ from werkzeug.utils import secure_filename
 from app.ai_helpers import (
     clean_response,
     delayed_delete,
+    initiate_inbound_message,
     process_initial_message,
     process_message,
 )
@@ -32,9 +33,13 @@ router = APIRouter()
 logger = logging.getLogger(__name__)
 redis_client = redis.Redis(host="redis", port=6379, db=0, decode_responses=True)
 
+
 account_sid = os.environ["TWILIO_ACCOUNT_SID"]
 auth_token = os.environ["TWILIO_AUTH_TOKEN"]
 client = Client(account_sid, auth_token)
+
+
+app_public_url = os.environ["APP_PUBLIC_URL"]
 
 
 # Routes
@@ -98,7 +103,7 @@ async def start_call(request: Request):
         to=customer_phone_number,
         from_=Config.TWILIO_PHONE_NUMBER,
         method="GET",
-        status_callback=Config.APP_PUBLIC_EVENT_URL,
+        status_callback=app_public_url + "/event",
         status_callback_method="POST",
     )
     return JSONResponse({"message": "Call initiated", "call_sid": call.sid})
@@ -132,7 +137,7 @@ async def gather_input_inbound(call_sid: str, request: Request):
     logger.info("Initializing for inbound call...")
     unique_id = str(uuid.uuid4())
     message_history = []
-    agent_response = await initiate_inbound_message()  # Assuming you have this function
+    agent_response = await initiate_inbound_message()
     audio_data = text_to_speech(agent_response)
     audio_file_path = save_audio_file(audio_data)
     audio_filename = os.path.basename(audio_file_path)
@@ -167,7 +172,6 @@ async def process_speech(request: Request):
         request.url_for(
             "serve_audio",
             filename=secure_filename(audio_filename),
-            _external=True,
             CallSid=call_sid,
         )
     )

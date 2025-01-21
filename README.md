@@ -28,7 +28,7 @@ Below is the description of each file and their purpose in the project.
 - Open a Terminal & run
 
 ```bash
-ngrok http 5000
+ngrok http 8000
 ```
 
 This will create a public link such as https"//a98d-82-26-133-9.ngrok-free.app
@@ -42,7 +42,7 @@ This will create a public link such as https"//a98d-82-26-133-9.ngrok-free.app
    ```bash
        docker-compose up --build
    ```
-5. Once the containers are running, access the application via `http://localhost:5000` or another configured port.
+5. Once the containers are running, access the application via `http://localhost:8000` or another configured port.
 
 ### Stopping the Application
 
@@ -64,7 +64,8 @@ docker-compose up
 <!-- Initialize the app -->
 
 ```bash
-    uvicorn app.main:app --reload
+    uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+
 ```
 
 ```bash
