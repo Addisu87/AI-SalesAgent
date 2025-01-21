@@ -7,3 +7,7 @@ langchain-core
 redis
 openai
 assemblyai
+jinja2
+twilio
+langchain
+werkzeug

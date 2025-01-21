@@ -4,11 +4,11 @@ import os
 import threading
 import time
 
-from core.config import Config
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import JSONResponse
 from groq import Groq
 
+from app.core.config import Config
 from app.utils.prompts import (
     AGENT_PROMPT_INBOUND_TEMPLATE,
     GYM_AGENT_PROMPT,

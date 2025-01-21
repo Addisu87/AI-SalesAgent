@@ -4,14 +4,12 @@ import os
 import uuid
 
 import redis
-from core.config import Config
 from fastapi import (
     APIRouter,
     BackgroundTasks,
     HTTPException,
     Request,
     status,
-    url_for,
 )
 from fastapi.responses import FileResponse, JSONResponse
 from twilio.rest import Client
@@ -28,16 +26,22 @@ from app.audio_helpers import (
     save_audio_file,
     text_to_speech,
 )
+from app.core.config import Config
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
 redis_client = redis.Redis(host="redis", port=6379, db=0, decode_responses=True)
-client = Client(Config.TWILIO_ACCOUNT_SID, Config.TWILIO_AUTH_TOKEN)
+
+account_sid = os.environ["TWILIO_ACCOUNT_SID"]
+auth_token = os.environ["TWILIO_AUTH_TOKEN"]
+client = Client(account_sid, auth_token)
 
 
 # Routes
 @router.get("/audio/{filename}")
-async def serve_audio(filename: str, background_tasks: BackgroundTasks):
+async def serve_audio(
+    filename: str, background_tasks: BackgroundTasks, request: Request
+):
     """Serve audio file from directory."""
     directory = "audio_files"
     full_path = os.path.join(directory, filename)
@@ -83,10 +87,10 @@ async def start_call(request: Request):
     redis_client.set(unique_id, json.dumps(message_history))
 
     response = VoiceResponse()
-    audio_url = url_for("serve_audio", filename=audio_filename, _external=True)
+    audio_url = request.url_for("serve_audio", filename=audio_filename, _external=True)
     response.play(audio_url)
 
-    gather_url = url_for("gather_input", _external=True, CallSid=unique_id)
+    gather_url = request.url_for("gather_input", _external=True, CallSid=unique_id)
     response.redirect(gather_url)
 
     call = client.calls.create(
@@ -105,7 +109,9 @@ async def gather_input(request: Request):
     """Endpoint to gather customer speech input."""
     call_sid = request.query_params.get("CallSid", "default_sid")
     resp = VoiceResponse()
-    process_speech_url = url_for("process_speech", _external=True, CallSid=call_sid)
+    process_speech_url = request.url_for(
+        "process_speech", _external=True, CallSid=call_sid
+    )
     gather = Gather(
         input="speech",
         action=process_speech_url,
@@ -114,41 +120,39 @@ async def gather_input(request: Request):
     )
     resp.append(gather)
 
-    gather_url = url_for("gather_input", _external=True, CallSid=call_sid)
+    gather_url = request.url_for("gather_input", _external=True, CallSid=call_sid)
     resp.redirect(gather_url)
     return str(resp)
 
 
 @router.get("/gather-inbound")
-async def gather_input_inbound(call_sid: str):
+async def gather_input_inbound(call_sid: str, request: Request):
     """Gathers customer's speech input for both inbound and outbound calls."""
     resp = VoiceResponse()
-    print("Initializing for inbound call...")
+    logger.info("Initializing for inbound call...")
     unique_id = str(uuid.uuid4())
     message_history = []
-    agent_response = initiate_inbound_message()
+    agent_response = await initiate_inbound_message()  # Assuming you have this function
     audio_data = text_to_speech(agent_response)
     audio_file_path = save_audio_file(audio_data)
     audio_filename = os.path.basename(audio_file_path)
+
     resp.play(
-        url_for(
-            "serve_audio", filename=secure_filename(audio_filename)
-        ),  # Corrected here
-        _external=True,
-        CallSid=call_sid,
+        request.url_for(
+            "serve_audio", filename=secure_filename(audio_filename), _external=True
+        )
     )
     message_history.append({"role": "assistant", "content": agent_response})
     redis_client.set(unique_id, json.dumps(message_history))
-    resp.redirect(url_for("gather_input", CallSid=call_sid))
+    resp.redirect(request.url_for("gather_input", CallSid=call_sid))
     return str(resp)
 
 
 @router.post("/process-speech")
 async def process_speech(request: Request):
-    "Process customer's speech input and generates a response."
-    speech_result = request.values.get("SpeechResult", "").strip()
+    """Process customer's speech input and generates a response."""
+    speech_result = request.form.get("SpeechResult", "").strip()
     call_sid = request.args.get("CallSid", "default_sid")
-    print(call_sid)
     message_history_json = redis_client.get(call_sid)
     message_history = json.loads(message_history_json) if message_history_json else []
 
@@ -160,7 +164,7 @@ async def process_speech(request: Request):
 
     resp = VoiceResponse()
     resp.play(
-        url_for(
+        request.url_for(
             "serve_audio",
             filename=secure_filename(audio_filename),
             _external=True,
@@ -168,10 +172,10 @@ async def process_speech(request: Request):
         )
     )
     if "<END_OF_CALL>" in ai_response_text:
-        print("The conversation has ended.")
+        logger.info("The conversation has ended.")
         resp.hangup()
 
-    resp.redirect(url_for("gather_input", CallSid=call_sid))
+    resp.redirect(request.url_for("gather_input", CallSid=call_sid))
     message_history.append({"role": "user", "content": speech_result})
     message_history.append({"role": "assistant", "content": response_text})
     redis_client.set(call_sid, json.dumps(message_history))
@@ -180,8 +184,8 @@ async def process_speech(request: Request):
 
 @router.post("/event")
 async def event(request: Request):
-    """Handle status callback from Twillo calls."""
-    call_status = request.values.get("CallStatus", "")
+    """Handle status callback from Twilio calls."""
+    call_status = request.form.get("CallStatus", "")
     if call_status in ["completed", "busy", "failed"]:
-        logger.info(f"call completed with status: {call_status}")
+        logger.info(f"Call completed with status: {call_status}")
     return JSONResponse(status_code=status.HTTP_204_NO_CONTENT)
