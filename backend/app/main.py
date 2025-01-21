@@ -1,8 +1,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.routers.serve_audio import router as audio_router
-from app.utils.tools import setup_logger
+from backend.app.routers.call_router import router as audio_router
+from backend.app.helpers.tools_helpers import setup_logger
 
 # Configure logging
 logger = setup_logger("Main")

@@ -1,11 +1,10 @@
 import os
 import uuid
 
+from core.config import Config
 from elevenlabs import VoiceSettings
 from elevenlabs.client import ElevenLabs
 from fastapi import HTTPException
-
-from app.core.config import Config
 
 # Initialize ElevenLabs client
 client = ElevenLabs(api_key=Config.ELEVENLABS_API_KEY)

@@ -4,6 +4,7 @@ import os
 import uuid
 
 import redis
+from core.config import Config
 from fastapi import (
     APIRouter,
     BackgroundTasks,
@@ -16,30 +17,29 @@ from twilio.rest import Client
 from twilio.twiml.voice_response import Gather, VoiceResponse
 from werkzeug.utils import secure_filename
 
-from app.ai_helpers import (
+from app.helpers.ai_helpers import (
     clean_response,
     delayed_delete,
     initiate_inbound_message,
-    process_initial_message,
+    process_inbound_message,
     process_message,
 )
-from app.audio_helpers import (
+from app.helpers.audio_helpers import (
     save_audio_file,
     text_to_speech,
 )
-from app.core.config import Config
 
 router = APIRouter()
+
+
 logger = logging.getLogger(__name__)
 redis_client = redis.Redis(host="redis", port=6379, db=0, decode_responses=True)
 
+app_public_url = os.environ["APP_PUBLIC_URL"]
 
 account_sid = os.environ["TWILIO_ACCOUNT_SID"]
 auth_token = os.environ["TWILIO_AUTH_TOKEN"]
 client = Client(account_sid, auth_token)
-
-
-app_public_url = os.environ["APP_PUBLIC_URL"]
 
 
 # Routes
@@ -74,7 +74,7 @@ async def start_call(request: Request):
     )
 
     # Call AI to generate the initial response.
-    ai_message = await process_initial_message(customer_name, customer_business_details)
+    ai_message = await process_inbound_message(customer_name, customer_business_details)
     initial_message = clean_response(ai_message)
     audio_data = text_to_speech(initial_message)
     audio_file_path = save_audio_file(audio_data)

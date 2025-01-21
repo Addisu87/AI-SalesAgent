@@ -4,24 +4,23 @@ import os
 import threading
 import time
 
-from fastapi import APIRouter, Depends, HTTPException
-from fastapi.responses import JSONResponse
-from groq import Groq
-
 from app.core.config import Config
-from app.utils.prompts import (
-    AGENT_PROMPT_INBOUND_TEMPLATE,
-    AGENT_PROMPT_OUTBOUND_TEMPLATE,
-    STAGE_TOOL_ANALYZER_PROMPT,
-)
-from app.utils.stages import update_stage
-from app.utils.tools import (
+from app.helpers.tools_helpers import (
     appointment_availability,
     calendly_meeting,
     fetch_product_price,
     onsite_appointment,
     tools_info,
 )
+from app.prompts.agent_prompts import (
+    AGENT_PROMPT_INBOUND_TEMPLATE,
+    AGENT_PROMPT_OUTBOUND_TEMPLATE,
+    STAGE_TOOL_ANALYZER_PROMPT,
+)
+from app.prompts.conversation_stages import update_stage
+from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import JSONResponse
+from groq import Groq
 
 router = APIRouter()
 
