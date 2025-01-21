@@ -68,9 +68,9 @@ async def start_call(request: Request):
     data = await request.json()
 
     customer_name = data.get("customer_name", "Valued Customer")
-    customer_phone_number = data.get("customer_phoneNumber", "")
+    customer_phone_number = data.get("customer_phonenumber", "")
     customer_business_details = data.get(
-        "customer_businessDetails", "No details provided."
+        "customer_businessdetails", "No details provided."
     )
 
     # Call AI to generate the initial response.

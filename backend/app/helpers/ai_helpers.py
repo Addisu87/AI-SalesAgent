@@ -17,18 +17,21 @@ from app.prompts.agent_prompts import (
     AGENT_PROMPT_OUTBOUND_TEMPLATE,
     STAGE_TOOL_ANALYZER_PROMPT,
 )
-from app.prompts.conversation_stages import update_stage
+from app.prompts.conversation_stages import ConversationStages, update_stage
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import JSONResponse
-from groq import Groq
+from openai import OpenAI
 
 router = APIRouter()
 
 logger = logging.getLogger(__name__)
 
-client = Groq(
-    api_key=os.environ.get("GROQ_API_KEY"),
-)
+# client = Groq(
+#     api_key=os.environ.get("GROQ_API_KEY"),
+# )
+
+
+client = OpenAI()
 
 
 # Utility Functions
@@ -40,7 +43,7 @@ def get_config():
         "company_business": Config.COMPANY_BUSINESS,
         "conversation_purpose": Config.CONVERSATION_PURPOSE,
         "company_products_services": Config.COMPANY_PRODUCTS_SERVICES,
-        "conversation_stage": update_stage,
+        "conversation_stages": ConversationStages,
     }
 
 
@@ -127,7 +130,8 @@ async def initiate_inbound_message(config: dict = Depends(get_config)):
 async def process_inbound_message(
     customer_name: str,
     customer_problem: str,
-    config: dict = Depends(lambda: get_config()),
+    current_stage: int,
+    config: dict = Depends(get_config),
 ):
     """Process the initial message for the customer."""
     initial_prompt = AGENT_PROMPT_INBOUND_TEMPLATE.format(
@@ -135,8 +139,13 @@ async def process_inbound_message(
         company_name=config["company_name"],
         company_business=config["company_business"],
         conversation_purpose=config["conversation_purpose"],
-        conversation_stages=config["conversation_stages"],
     )
+
+    # Use ConversationStages directly for inbound
+    inbound_stage = ConversationStages.INBOUND.get(current_stage, "Unknown Stage")
+
+    if inbound_stage == "Unknown Stage":
+        raise HTTPException(status_code=400, detail="Invalid conversation stage.")
 
     message_to_send_to_ai = [
         {"role": "system", "content": initial_prompt},
@@ -144,6 +153,7 @@ async def process_inbound_message(
             "role": "user",
             "content": f"Customer Name: {customer_name}. Problem: {customer_problem}",
         },
+        {"role": "system", "content": f"Current stage: {inbound_stage}"},
     ]
 
     response = gen_ai_output(message_to_send_to_ai)
@@ -165,17 +175,19 @@ async def invoke_stage_tool_analysis(
         ]
     )
 
+    # Use ConversationStages directly in the prompt formatting
     intent_tool_prompt = STAGE_TOOL_ANALYZER_PROMPT.format(
         salesperson_name=config["salesperson_name"],
         company_name=config["company_name"],
         company_business=config["company_business"],
         conversation_purpose=config["conversation_purpose"],
-        conversation_stages=config["conversation_stages"],
+        conversation_stages=json.dumps(ConversationStages.INBOUND, indent=2),
         conversation_history=message_history,
         company_products_services=config["company_products_services"],
         user_input=user_input,
         tools=tools_description,
     )
+
     message_to_send_to_ai = [{"role": "system", "content": intent_tool_prompt}]
     message_to_send_to_ai.append(
         {
@@ -188,14 +200,25 @@ async def invoke_stage_tool_analysis(
 
 
 async def process_message(
-    message_history: list, user_input: str, config: dict = Depends(get_config)
+    message_history: list,
+    user_input: str,
+    current_stage: int,
+    stage_type: str,
+    config: dict = Depends(get_config),
 ):
+    # Validate the current stage
+    if current_stage < 1 or current_stage > len(ConversationStages.INBOUND):
+        raise HTTPException(status_code=400, detail="Invalid current stage.")
+
+    # Update stage based on user input
+    new_stage = update_stage(stage_type, current_stage, user_input)
+
+    # Proceed with the rest of the logic based on the updated stage
     stage_tool_output = await invoke_stage_tool_analysis(
         message_history, user_input, config
     )
-    stage = get_conversation_stage(stage_tool_output)
-    tool_output = ""
 
+    tool_output = ""
     try:
         if is_tool_required(stage_tool_output):
             tool_name, params = await get_tool_details(stage_tool_output)
@@ -210,18 +233,20 @@ async def process_message(
                     tool_output = fetch_product_price(params)
                 case _:
                     return JSONResponse(content={"response": ""})
+
             message_history.append({"role": "api_response", "content": tool_output})
     except ValueError:
         tool_output = "Some Error occurred in calling the tools. Ask user if it's okay that you callback the user later with answer of the query"
 
+    # Generate the next message for the AI based on the updated stage
     inbound_prompt = AGENT_PROMPT_OUTBOUND_TEMPLATE.format(
         salesperson_name=config["salesperson_name"],
         company_name=config["company_name"],
         company_business=config["company_business"],
         conversation_purpose=config["conversation_purpose"],
-        conversation_stage_id=stage,
+        conversation_stage_id=new_stage,  # Updated stage
         company_products_services=config["company_products_services"],
-        conversation_stages=json.dumps(config["conversation_stages"], indent=2),
+        conversation_stages=json.dumps(ConversationStages.OUTBOUND, indent=2),
         conversation_history=json.dumps(message_history, indent=2),
         tools_response=tool_output,
     )
