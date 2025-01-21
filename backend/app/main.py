@@ -26,12 +26,5 @@ def main():
     return {"message": "AI Sales Agent is running!"}
 
 
-# @app.post("/sales")
-# def handle_sales(query: str):
-#     logger.info("Received query from user")
-#     response = ai_helper.generate_response(f"{Prompts.WELCOME_MESSAGE} {query}")
-#     return {"response": response}
-
-
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0.", port=5000)

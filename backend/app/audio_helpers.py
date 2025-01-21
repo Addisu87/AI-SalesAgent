@@ -21,22 +21,24 @@ def text_to_speech(text: str) -> bytes:
         bytes: The audio content in binary format.
 
     Raises:
-        HTTPException: If the API call fails.
+        HTTPException: If the API call fails or an error occurs.
     """
     try:
+        # Use the ElevenLabs text-to-speech conversion
         response = client.text_to_speech.convert(
             voice_id=Config.VOICE_ID,
             output_format="mp3_22050_32",
             text=text,
             model_id="eleven_turbo_v2_5",
             voice_settings=VoiceSettings(
-                stability=0.0,
-                similarity_boost=1.0,
-                style=0.0,
+                stability=0.5,
+                similarity_boost=0.75,
+                style=0.5,
                 use_speaker_boost=True,
             ),
         )
 
+        # Check if the response is successful
         if response.status_code == 200:
             return response.content
         else:
@@ -45,7 +47,10 @@ def text_to_speech(text: str) -> bytes:
                 detail=f"Failed to generate speech: {response.text}",
             )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"An error occurred during text-to-speech conversion: {str(e)}",
+        )
 
 
 def save_audio_file(audio_data: bytes) -> str:
@@ -57,9 +62,12 @@ def save_audio_file(audio_data: bytes) -> str:
 
     Returns:
         str: The path to the saved audio file.
+
+    Raises:
+        HTTPException: If saving the file fails.
     """
     try:
-        # Ensure the directory exists
+        # Ensure the output directory exists
         output_dir = "audio_files"
         os.makedirs(output_dir, exist_ok=True)
 
@@ -71,7 +79,7 @@ def save_audio_file(audio_data: bytes) -> str:
         with open(file_path, "wb") as audio_file:
             audio_file.write(audio_data)
 
-        print(f"{file_path}: A new audio file was saved successfully!")
+        print(f"Audio file saved successfully at: {file_path}")
 
         return file_path
     except Exception as e:

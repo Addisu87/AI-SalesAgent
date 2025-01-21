@@ -5,10 +5,23 @@ import threading
 import time
 
 from core.config import Config
-from fastapi import APIRouter, HTTPException  # type: ignore
+from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import JSONResponse
 from groq import Groq
 
-from app.utils.stages import OUTBOUND_CONVERSATION_STAGES
+from app.utils.prompts import (
+    AGENT_PROMPT_INBOUND_TEMPLATE,
+    GYM_AGENT_PROMPT,
+    STAGE_TOOL_ANALYZER_PROMPT,
+)
+from app.utils.stages import conversation_stage
+from app.utils.tools import (
+    appointment_availability,
+    calendly_meeting,
+    fetch_product_price,
+    onsite_appointment,
+    tools_info,
+)
 
 router = APIRouter()
 
@@ -28,7 +41,7 @@ def get_config():
         "company_business": Config.COMPANY_BUSINESS,
         "conversation_purpose": Config.CONVERSATION_PURPOSE,
         "company_products_services": Config.COMPANY_PRODUCTS_SERVICES,
-        "conversation_stages": OUTBOUND_CONVERSATION_STAGES,
+        "conversation_stage": conversation_stage,
     }
 
 
@@ -98,3 +111,110 @@ async def get_tool_details(ai_output):
         return tool_name, tool_parameters
     except json.JSONDecodeError:
         raise ValueError("Invalid JSON format in AI output.")
+
+
+async def process_initial_message(
+    customer_name: str,
+    customer_problem: str,
+    config: dict = Depends(lambda: get_config()),
+):
+    """Process the initial message for the customer."""
+    initial_prompt = GYM_AGENT_PROMPT.format(
+        salesperson_name=config["salesperson_name"],
+        company_name=config["company_name"],
+        company_business=config["company_business"],
+        conversation_purpose=config["conversation_purpose"],
+        conversation_stages=config["conversation_stages"],
+    )
+
+    message_to_send_to_ai = [
+        {"role": "system", "content": initial_prompt},
+        {
+            "role": "user",
+            "content": f"Customer Name: {customer_name}. Problem: {customer_problem}",
+        },
+    ]
+
+    response = gen_ai_output(message_to_send_to_ai)
+    return JSONResponse(content={"response": response})
+
+
+async def invoke_stage_tool_analysis(
+    message_history: list, user_input: str, config: dict = Depends(get_config)
+):
+    tools_description = "\n".join(
+        [
+            f"{tool['name']}: {tool['description']}"
+            + (
+                f" (Parameters: {', '.join([f'{k} - possible values: {v}' if isinstance(v, list) else f'{k} format' for k, v in tool.get('parameters', {}).items()])})"
+                if tool.get("parameters")
+                else ""
+            )
+            for tool in tools_info.values()
+        ]
+    )
+
+    intent_tool_prompt = STAGE_TOOL_ANALYZER_PROMPT.format(
+        salesperson_name=config["salesperson_name"],
+        company_name=config["company_name"],
+        company_business=config["company_business"],
+        conversation_purpose=config["conversation_purpose"],
+        conversation_stages=config["conversation_stages"],
+        conversation_history=message_history,
+        company_products_services=config["company_products_services"],
+        user_input=user_input,
+        tools=tools_description,
+    )
+    message_to_send_to_ai = [{"role": "system", "content": intent_tool_prompt}]
+    message_to_send_to_ai.append(
+        {
+            "role": "user",
+            "content": "You must respond in the json format specified in system prompt",
+        }
+    )
+    ai_output = gen_ai_output(message_to_send_to_ai)
+    return JSONResponse(content={"ai_output": ai_output})
+
+
+async def process_message(
+    message_history: list, user_input: str, config: dict = Depends(get_config)
+):
+    stage_tool_output = await invoke_stage_tool_analysis(
+        message_history, user_input, config
+    )
+    stage = get_conversation_stage(stage_tool_output)
+    tool_output = ""
+
+    try:
+        if is_tool_required(stage_tool_output):
+            tool_name, params = await get_tool_details(stage_tool_output)
+            match tool_name:
+                case "MeetingScheduler":
+                    tool_output = calendly_meeting()
+                case "OnsiteAppointment":
+                    tool_output = onsite_appointment()
+                case "GymAppointmentAvailablitiy":
+                    tool_output = appointment_availability()
+                case "PriceInquity":
+                    tool_output = fetch_product_price(params)
+                case _:
+                    return JSONResponse(content={"response": ""})
+            message_history.append({"role": "api_response", "content": tool_output})
+    except ValueError:
+        tool_output = "Some Error occurred in calling the tools. Ask user if it's okay that you callback the user later with answer of the query"
+
+    inbound_prompt = AGENT_PROMPT_INBOUND_TEMPLATE.format(
+        salesperson_name=config["salesperson_name"],
+        company_name=config["company_name"],
+        company_business=config["company_business"],
+        conversation_purpose=config["conversation_purpose"],
+        conversation_stage_id=stage,
+        company_products_services=config["company_products_services"],
+        conversation_stages=json.dumps(config["conversation_stages"], indent=2),
+        conversation_history=json.dumps(message_history, indent=2),
+        tools_response=tool_output,
+    )
+    message_to_send_to_ai_final = [{"role": "system", "content": inbound_prompt}]
+    message_to_send_to_ai_final.append({"role": "user", "content": user_input})
+    talkback_response = gen_ai_output(message_to_send_to_ai_final)
+    return JSONResponse(content={"response": talkback_response})
