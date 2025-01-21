@@ -4,7 +4,6 @@ import os
 import uuid
 
 import redis
-from core.config import Config
 from fastapi import (
     APIRouter,
     BackgroundTasks,
@@ -17,6 +16,7 @@ from twilio.rest import Client
 from twilio.twiml.voice_response import Gather, VoiceResponse
 from werkzeug.utils import secure_filename
 
+from app.core.config import Config
 from app.helpers.ai_helpers import (
     clean_response,
     delayed_delete,

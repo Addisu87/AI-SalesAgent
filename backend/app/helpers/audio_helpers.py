@@ -1,7 +1,7 @@
 import os
 import uuid
 
-from core.config import Config
+from app.core.config import Config
 from elevenlabs import VoiceSettings
 from elevenlabs.client import ElevenLabs
 from fastapi import HTTPException
