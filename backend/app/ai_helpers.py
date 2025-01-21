@@ -11,10 +11,10 @@ from groq import Groq
 from app.core.config import Config
 from app.utils.prompts import (
     AGENT_PROMPT_INBOUND_TEMPLATE,
-    GYM_AGENT_PROMPT,
+    AGENT_PROMPT_OUTBOUND_TEMPLATE,
     STAGE_TOOL_ANALYZER_PROMPT,
 )
-from app.utils.stages import conversation_stages
+from app.utils.stages import update_stage
 from app.utils.tools import (
     appointment_availability,
     calendly_meeting,
@@ -41,7 +41,7 @@ def get_config():
         "company_business": Config.COMPANY_BUSINESS,
         "conversation_purpose": Config.CONVERSATION_PURPOSE,
         "company_products_services": Config.COMPANY_PRODUCTS_SERVICES,
-        "conversation_stage": conversation_stages,
+        "conversation_stage": update_stage,
     }
 
 
@@ -117,21 +117,21 @@ async def get_tool_details(ai_output):
         raise ValueError("Invalid JSON format in AI output.")
 
 
-async def initiate_inbound_message():
-    initial_prompt = GYM_AGENT_PROMPT.format(
-        salesperson_name=salesperson_name,
-        company_name=company_name,
+async def initiate_inbound_message(config: dict = Depends(get_config)):
+    initial_prompt = AGENT_PROMPT_INBOUND_TEMPLATE.format(
+        salesperson_name=config["salesperson_name"],
+        company_name=config["company_name"],
     )
     return initial_prompt
 
 
-async def process_initial_message(
+async def process_inbound_message(
     customer_name: str,
     customer_problem: str,
     config: dict = Depends(lambda: get_config()),
 ):
     """Process the initial message for the customer."""
-    initial_prompt = GYM_AGENT_PROMPT.format(
+    initial_prompt = AGENT_PROMPT_INBOUND_TEMPLATE.format(
         salesperson_name=config["salesperson_name"],
         company_name=config["company_name"],
         company_business=config["company_business"],
@@ -215,7 +215,7 @@ async def process_message(
     except ValueError:
         tool_output = "Some Error occurred in calling the tools. Ask user if it's okay that you callback the user later with answer of the query"
 
-    inbound_prompt = AGENT_PROMPT_INBOUND_TEMPLATE.format(
+    inbound_prompt = AGENT_PROMPT_OUTBOUND_TEMPLATE.format(
         salesperson_name=config["salesperson_name"],
         company_name=config["company_name"],
         company_business=config["company_business"],
