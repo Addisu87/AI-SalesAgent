@@ -81,7 +81,10 @@ async def start_call(request: Request):
     audio_filename = os.path.basename(audio_file_path)
 
     # Update message history
-    initial_transcript = f"Customer Name: {customer_name}. Customer's business details: {customer_business_details}"
+    initial_transcript = (
+        f"Customer Name: {customer_name}. "
+        f"Customer's business details: {customer_business_details}"
+    )
     message_history.extend(
         [
             {"role": "user", "content": initial_transcript},

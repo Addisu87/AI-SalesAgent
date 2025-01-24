@@ -18,7 +18,10 @@ def setup_logger(name: str):
 tools_info = {
     "MeetingScheduler": {
         "name": "MeetingScheduler",
-        "description": "Schedules a meeting with the user using an online calendar tool like Calendly.",
+        "description": (
+            "Schedules a meeting with the user using an online calendar tool "
+            "like Calendly."
+        ),
         "parameters": {
             "date": "string in YYYY-MM-DD format",
             "time": "string in HH:MM format",
@@ -39,7 +42,10 @@ tools_info = {
         "description": "Checks the availability of gym appointments.",
         "parameters": {
             "date": "string in YYYY-MM-DD format",
-            "time_slot": "string indicating preferred time range (e.g., 'morning', 'afternoon', 'evening')",
+            "time_slot": (
+                "string indicating preferred time range "
+                "(e.g., 'morning', 'afternoon', 'evening')"
+            ),
         },
     },
     "PriceInquiry": {
@@ -56,12 +62,17 @@ tools_info = {
         "parameters": {
             "goal": "string (e.g., 'weight loss', 'muscle gain')",
             "fitness_level": "string (e.g., 'beginner', 'intermediate', 'advanced')",
-            "preferences": "string describing exercise preferences (e.g., 'bodyweight', 'short workouts')",
+            "preferences": (
+                "string describing exercise preferences "
+                "(e.g., 'bodyweight', 'short workouts')"
+            ),
         },
     },
     "NutritionAdvisor": {
         "name": "NutritionAdvisor",
-        "description": "Provides dietary advice or meal plans based on user preferences.",
+        "description": (
+            "Provides dietary advice or meal plans based on user preferences."
+        ),
         "parameters": {
             "goal": "string (e.g., 'weight loss', 'muscle gain')",
             "diet_type": "string (e.g., 'vegetarian', 'keto', 'balanced')",

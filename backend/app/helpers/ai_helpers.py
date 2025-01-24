@@ -162,7 +162,7 @@ async def invoke_stage_tool_analysis(
         [
             f"{tool['name']}: {tool['description']}"
             + (
-                f" (Parameters: {', '.join([f'{k} - possible values: {v}' if isinstance(v, list) else f'{k} format' for k, v in tool.get('parameters', {}).items()])})"
+                f" (Parameters: {', '.join([f'{k} - possible values: {v}' if isinstance(v, list) else f'{k} format' for k, v in tool.get('parameters', {}).items()])})"  # noqa: E501
                 if tool.get("parameters")
                 else ""
             )
@@ -231,7 +231,11 @@ async def process_message(
 
             message_history.append({"role": "api_response", "content": tool_output})
     except ValueError:
-        tool_output = "Some Error occurred in calling the tools. Ask user if it's okay that you callback the user later with answer of the query"
+        tool_output = (
+            "Some Error occurred in calling the tools. "
+            "Ask user if it's okay that you callback the user later with "
+            "answer of the query"
+        )
 
     # Generate the next message for the AI based on the updated stage
     inbound_prompt = AGENT_PROMPT_OUTBOUND_TEMPLATE.format(

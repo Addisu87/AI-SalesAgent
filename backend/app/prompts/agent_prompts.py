@@ -51,5 +51,6 @@ Tools response:
 User input:
 {user_input}
 
-Response: Acknowledge, provide solutions, explain tool usage (if any), and suggest next steps.
+Response: Acknowledge, provide solutions, explain tool usage (if any),
+and suggest next steps.
 """

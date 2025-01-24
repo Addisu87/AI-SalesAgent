@@ -12,7 +12,8 @@ client = ElevenLabs(api_key=Config.ELEVENLABS_API_KEY)
 
 def text_to_speech(text: str) -> bytes:
     """
-    Converts text to speech using the ElevenLabs API and returns the audio content as bytes.
+    Converts text to speech using the ElevenLabs API and
+    returns the audio content as bytes.
 
     Args:
         text (str): The text to be converted to speech.
