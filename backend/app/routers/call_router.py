@@ -16,7 +16,7 @@ from twilio.rest import Client
 from twilio.twiml.voice_response import Gather, VoiceResponse
 from werkzeug.utils import secure_filename
 
-from app.core.config import Config
+from app.core.config import config
 from app.helpers.ai_helpers import (
     clean_response,
     delayed_delete,
@@ -105,7 +105,7 @@ async def start_call(request: Request):
     call = client.calls.create(
         twiml=str(response),
         to=customer_phone_number,
-        from_=Config.TWILIO_PHONE_NUMBER,
+        from_=config.TWILIO_PHONE_NUMBER,
         method="GET",
         status_callback=app_public_url + "/event",
         status_callback_method="POST",

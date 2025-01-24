@@ -4,7 +4,12 @@ import os
 import threading
 import time
 
-from app.core.config import Config
+from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import JSONResponse
+from groq import Groq
+from openai import OpenAI
+
+from app.core.config import config
 from app.helpers.tools_helpers import (
     appointment_availability,
     calendly_meeting,
@@ -18,10 +23,6 @@ from app.prompts.agent_prompts import (
     STAGE_TOOL_ANALYZER_PROMPT,
 )
 from app.prompts.conversation_stages import ConversationStages, update_stage
-from fastapi import APIRouter, Depends, HTTPException
-from fastapi.responses import JSONResponse
-from groq import Groq
-from openai import OpenAI
 
 router = APIRouter()
 
@@ -38,12 +39,12 @@ client = OpenAI()
 # Utility Functions
 def get_config():
     return {
-        "openai_api_key": Config.OPENAI_API_KEY,
-        "salesperson_name": Config.AISALESAGENT_NAME,
-        "company_name": Config.COMPANY_NAME,
-        "company_business": Config.COMPANY_BUSINESS,
-        "conversation_purpose": Config.CONVERSATION_PURPOSE,
-        "company_products_services": Config.COMPANY_PRODUCTS_SERVICES,
+        "openai_api_key": config.OPENAI_API_KEY,
+        "salesperson_name": config.AISALESAGENT_NAME,
+        "company_name": config.COMPANY_NAME,
+        "company_business": config.COMPANY_BUSINESS,
+        "conversation_purpose": config.CONVERSATION_PURPOSE,
+        "company_products_services": config.COMPANY_PRODUCTS_SERVICES,
         "conversation_stages": ConversationStages,
     }
 
