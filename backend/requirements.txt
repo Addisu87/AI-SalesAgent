@@ -12,3 +12,4 @@ twilio
 langchain
 werkzeug
 requests
+pydantic-settings
