@@ -20,7 +20,7 @@ class ConversationStages:
         """Get the next stage for inbound or outbound."""
         stages = (
             ConversationStages.INBOUND
-            if stage_type == "inbound"
+            if stage_type.lower() == "inbound"
             else ConversationStages.OUTBOUND
         )
         try:

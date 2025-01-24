@@ -20,15 +20,16 @@ from app.prompts.agent_prompts import (
 from app.prompts.conversation_stages import ConversationStages, update_stage
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import JSONResponse
+from groq import Groq
 from openai import OpenAI
 
 router = APIRouter()
 
 logger = logging.getLogger(__name__)
 
-# client = Groq(
-#     api_key=os.environ.get("GROQ_API_KEY"),
-# )
+client = Groq(
+    api_key=os.environ.get("GROQ_API_KEY"),
+)
 
 
 client = OpenAI()
@@ -130,7 +131,6 @@ async def initiate_inbound_message(config: dict = Depends(get_config)):
 async def process_inbound_message(
     customer_name: str,
     customer_problem: str,
-    current_stage: int,
     config: dict = Depends(get_config),
 ):
     """Process the initial message for the customer."""
@@ -142,10 +142,6 @@ async def process_inbound_message(
     )
 
     # Use ConversationStages directly for inbound
-    inbound_stage = ConversationStages.INBOUND.get(current_stage, "Unknown Stage")
-
-    if inbound_stage == "Unknown Stage":
-        raise HTTPException(status_code=400, detail="Invalid conversation stage.")
 
     message_to_send_to_ai = [
         {"role": "system", "content": initial_prompt},
@@ -153,7 +149,6 @@ async def process_inbound_message(
             "role": "user",
             "content": f"Customer Name: {customer_name}. Problem: {customer_problem}",
         },
-        {"role": "system", "content": f"Current stage: {inbound_stage}"},
     ]
 
     response = gen_ai_output(message_to_send_to_ai)
