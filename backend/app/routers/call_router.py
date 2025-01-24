@@ -28,6 +28,7 @@ from app.helpers.audio_helpers import (
     save_audio_file,
     text_to_speech,
 )
+from app.prompts.conversation_stages import update_stage
 
 router = APIRouter()
 
@@ -159,34 +160,72 @@ async def gather_input_inbound(call_sid: str, request: Request):
 @router.post("/process-speech")
 async def process_speech(request: Request):
     """Process customer's speech input and generates a response."""
-    speech_result = request.form.get("SpeechResult", "").strip()
-    call_sid = request.args.get("CallSid", "default_sid")
-    message_history_json = redis_client.get(call_sid)
-    message_history = json.loads(message_history_json) if message_history_json else []
+    try:
+        # Extract speech input and CallSid
+        speech_result = request.form().get("SpeechResult", "").strip()
+        call_sid = request.query_params.get("CallSid", "default_sid")
 
-    ai_response_text = await process_message(message_history, speech_result)
-    response_text = clean_response(ai_response_text)
-    audio_data = text_to_speech(response_text)
-    audio_file_path = save_audio_file(audio_data)
-    audio_filename = os.path.basename(audio_file_path)
-
-    resp = VoiceResponse()
-    resp.play(
-        request.url_for(
-            "serve_audio",
-            filename=secure_filename(audio_filename),
-            CallSid=call_sid,
+        # Retrieve message history from Redis
+        message_history_json = redis_client.get(call_sid)
+        message_history = (
+            json.loads(message_history_json) if message_history_json else []
         )
-    )
-    if "<END_OF_CALL>" in ai_response_text:
-        logger.info("The conversation has ended.")
-        resp.hangup()
 
-    resp.redirect(request.url_for("gather_input", CallSid=call_sid))
-    message_history.append({"role": "user", "content": speech_result})
-    message_history.append({"role": "assistant", "content": response_text})
-    redis_client.set(call_sid, json.dumps(message_history))
-    return str(resp)
+        # Get current stage and determine stage type(inbound/outbound)
+        current_stage = (
+            message_history[-1].get("conversation_stage", 1) if message_history else 1
+        )
+        stage_type = "inbound" if "inbound" in call_sid.lower() else "outbound"
+
+        # Update the stage based on user input
+        updated_stage = update_stage(stage_type, current_stage, speech_result)
+        message_history.append(
+            {
+                "role": "user",
+                "content": speech_result,
+                "conversation_stage": updated_stage,
+            }
+        )
+
+        # Generate AI response based on message history
+        ai_response_text = await process_message(
+            message_history, speech_result, current_stage, stage_type
+        )
+        response_text = clean_response(ai_response_text)
+
+        # Convert AI response to audio and save the audio file
+        audio_data = text_to_speech(response_text)
+        audio_file_path = save_audio_file(audio_data)
+        audio_filename = os.path.basename(audio_file_path)
+
+        # Prepare Twillo VoiceResponse
+        resp = VoiceResponse()
+        resp.play(
+            request.url_for(
+                "serve_audio",
+                filename=secure_filename(audio_filename),
+                CallSid=call_sid,
+            )
+        )
+
+        # End the call if the conversation has ended
+        if "<END_OF_CALL>" in ai_response_text:
+            logger.info("The conversation has ended.")
+            resp.hangup()
+
+        resp.redirect(request.url_for("gather_input", CallSid=call_sid))
+        message_history.append({"role": "user", "content": speech_result})
+        message_history.append(
+            {"role": "assistant", "content": response_text, "stage": updated_stage}
+        )
+        redis_client.set(call_sid, json.dumps(message_history))
+        return str(resp)
+
+    except Exception as e:
+        logger.error(f"Error processing speech: {e}")
+        raise HTTPException(
+            status_code=500, detail="An error occurred while processing speech."
+        )
 
 
 @router.post("/event")
