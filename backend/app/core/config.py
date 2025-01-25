@@ -30,6 +30,7 @@ class GlobalConfig(BaseSettings):
     VOICE_ID: str | None = None
 
 
+# Ensure environment variables are prefixed based on ENV_STATE
 class DevConfig(GlobalConfig):
     model_config = SettingsConfigDict(env_prefix="DEV_", extra="ignore")
 

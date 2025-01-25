@@ -4,12 +4,6 @@ import os
 import uuid
 
 import redis
-from fastapi import APIRouter, BackgroundTasks, HTTPException, Request, status
-from fastapi.responses import FileResponse, JSONResponse
-from twilio.rest import Client
-from twilio.twiml.voice_response import Gather, VoiceResponse
-from werkzeug.utils import secure_filename
-
 from app.core.config import config
 from app.helpers.ai_helpers import (
     clean_response,
@@ -20,6 +14,11 @@ from app.helpers.ai_helpers import (
 )
 from app.helpers.audio_helpers import save_audio_file, text_to_speech
 from app.prompts.conversation_stages import update_stage
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Request, status
+from fastapi.responses import FileResponse, JSONResponse
+from twilio.rest import Client
+from twilio.twiml.voice_response import Gather, VoiceResponse
+from werkzeug.utils import secure_filename
 
 router = APIRouter()
 
@@ -53,7 +52,9 @@ async def serve_audio(
         return response
     except FileNotFoundError:
         logger.error(f"Audio file not found: {filename}")
-        raise HTTPException(status_code=404, detail="Audio file not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Audio file not found"
+        )
 
 
 @router.post("/start-call")
@@ -231,4 +232,6 @@ async def event(request: Request):
     call_status = request.form.get("CallStatus", "")
     if call_status in ["completed", "busy", "failed"]:
         logger.info(f"Call completed with status: {call_status}")
+    return JSONResponse(content={}, status_code=status.HTTP_204_NO_CONTENT)
+    return JSONResponse(content={}, status_code=status.HTTP_204_NO_CONTENT)
     return JSONResponse(content={}, status_code=status.HTTP_204_NO_CONTENT)

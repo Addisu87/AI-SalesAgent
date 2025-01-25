@@ -136,7 +136,7 @@ async def initiate_inbound_message(config: dict = Depends(get_config)):
 async def process_inbound_message(
     customer_name: str,
     customer_problem: str,
-    config: dict = Depends(get_config),
+    # config: dict = Depends(get_config),
 ):
     """Process the initial message for the customer."""
     initial_prompt = AGENT_PROMPT_INBOUND_TEMPLATE.format(
