@@ -28,6 +28,12 @@ class GlobalConfig(BaseConfig):
     ELEVENLABS_API_KEY: str | None = None
     VOICE_ID: str | None = None
 
+    AISALESAGENT_NAME: str | None = None
+    COMPANY_NAME: str | None = None
+    COMPANY_BUSINESS: str | None = None
+    CONVERSATION_PURPOSE: str | None = None
+    COMPANY_PRODUCTS_SERVICES: str | None = None
+
 
 # Ensure environment variables are prefixed based on ENV_STATE
 class DevConfig(GlobalConfig):
