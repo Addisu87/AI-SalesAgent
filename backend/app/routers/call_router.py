@@ -159,7 +159,7 @@ async def process_speech(request: Request):
     try:
         # Extract speech input and CallSid
         form = await request.form()
-        speech_result = form.get("SpeechResult", "").strip()
+        speech_result = form.get("SpeechResult", "").strip()  # type: ignore
         call_sid = str(form.get("CallSid", "default_sid"))
 
         # Retrieve message history from Redis
@@ -206,7 +206,7 @@ async def process_speech(request: Request):
         )
 
         # End the call if the conversation has ended
-        if "<END_OF_CALL>" in ai_response_text:
+        if "<END_OF_CALL>" in ai_response_text:  # type: ignore
             logger.info("The conversation has ended.")
             resp.hangup()
 
