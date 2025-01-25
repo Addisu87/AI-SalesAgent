@@ -4,13 +4,7 @@ import os
 import uuid
 
 import redis
-from fastapi import (
-    APIRouter,
-    BackgroundTasks,
-    HTTPException,
-    Request,
-    status,
-)
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Request, status
 from fastapi.responses import FileResponse, JSONResponse
 from twilio.rest import Client
 from twilio.twiml.voice_response import Gather, VoiceResponse
@@ -24,10 +18,7 @@ from app.helpers.ai_helpers import (
     process_inbound_message,
     process_message,
 )
-from app.helpers.audio_helpers import (
-    save_audio_file,
-    text_to_speech,
-)
+from app.helpers.audio_helpers import save_audio_file, text_to_speech
 from app.prompts.conversation_stages import update_stage
 
 router = APIRouter()
@@ -36,10 +27,11 @@ router = APIRouter()
 logger = logging.getLogger(__name__)
 redis_client = redis.Redis(host="redis", port=6379, db=0, decode_responses=True)
 
-app_public_url = os.environ["APP_PUBLIC_URL"]
 
-account_sid = os.environ["TWILIO_ACCOUNT_SID"]
-auth_token = os.environ["TWILIO_AUTH_TOKEN"]
+app_public_url = config.APP_PUBLIC_URL
+
+account_sid = config.TWILIO_ACCOUNT_SID
+auth_token = config.TWILIO_AUTH_TOKEN
 client = Client(account_sid, auth_token)
 
 

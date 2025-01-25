@@ -1,12 +1,18 @@
+import logging
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.helpers.tools_helpers import setup_logger
 from app.routers.call_router import router as audio_router
 
 # Configure logging
-logger = setup_logger("Main")
+logging.basicConfig(
+    level=logging.DEBUG,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+)
+logger = logging.getLogger(__name__)
 
+# Initialize FastAPI app
 app = FastAPI()
 
 # CORS middleware
@@ -22,6 +28,7 @@ app.add_middleware(
 app.include_router(audio_router)
 
 
+# Default route
 @app.get("/")
 def main():
     return {"message": "AI Sales Agent is running!"}
