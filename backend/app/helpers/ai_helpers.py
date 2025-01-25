@@ -29,9 +29,7 @@ router = APIRouter()
 
 logger = logging.getLogger(__name__)
 
-client = Groq(
-    api_key=os.environ.get("GROQ_API_KEY"),
-)
+client = Groq(api_key=config.GROQ_API_KEY)
 
 
 # client = OpenAI()
