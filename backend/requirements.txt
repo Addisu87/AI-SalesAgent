@@ -2,10 +2,10 @@ fastapi
 uvicorn
 elevenlabs
 python-dotenv
-groq
 langchain-core
 redis
 openai
+groq
 assemblyai
 jinja2
 twilio

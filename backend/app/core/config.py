@@ -1,3 +1,4 @@
+import os
 from functools import lru_cache
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -6,7 +7,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class BaseConfig(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
-    ENV_STATE: str | None = None
+    # Default ENV_STATE to "dev" if not provided
+    ENV_STATE: str = os.getenv("ENV_STATE", "dev")
 
 
 # Define the configuration settings class
@@ -21,6 +23,7 @@ class GlobalConfig(BaseSettings):
 
     # OpenAI API Credentials
     OPENAI_API_KEY: str | None = None
+    GROQ_API_KEY: str | None = None
 
     # Eleven Labs API Credentials
     ELEVENLABS_API_KEY: str | None = None
@@ -49,5 +52,4 @@ def get_config(env_state: str):
     return configs[env_state]()
 
 
-# Accessing the configuration
 config = get_config(BaseConfig().ENV_STATE)
