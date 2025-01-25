@@ -233,5 +233,3 @@ async def event(request: Request):
     if call_status in ["completed", "busy", "failed"]:
         logger.info(f"Call completed with status: {call_status}")
     return JSONResponse(content={}, status_code=status.HTTP_204_NO_CONTENT)
-    return JSONResponse(content={}, status_code=status.HTTP_204_NO_CONTENT)
-    return JSONResponse(content={}, status_code=status.HTTP_204_NO_CONTENT)

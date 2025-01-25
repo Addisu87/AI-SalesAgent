@@ -29,8 +29,9 @@ router = APIRouter()
 
 logger = logging.getLogger(__name__)
 
-
-client = Groq(api_key=config.GROQ_API_KEY)
+client = Groq(
+    api_key=os.environ.get("GROQ_API_KEY"),
+)
 
 
 # client = OpenAI()
@@ -135,7 +136,7 @@ async def initiate_inbound_message(config: dict = Depends(get_config)):
 async def process_inbound_message(
     customer_name: str,
     customer_problem: str,
-    # config: dict = Depends(get_config),
+    config: dict = Depends(get_config),
 ):
     """Process the initial message for the customer."""
     initial_prompt = AGENT_PROMPT_INBOUND_TEMPLATE.format(
@@ -213,17 +214,12 @@ async def process_message(
     new_stage = update_stage(stage_type, current_stage, user_input)
 
     # Proceed with the rest of the logic based on the updated stage
-    stage_tool_output = await invoke_stage_tool_analysis(
-        message_history, user_input, config
-    )
+    stage_tool_output = invoke_stage_tool_analysis(message_history, user_input, config)
 
     tool_output = ""
     try:
-        # Check if a tool is required
         if is_tool_required(stage_tool_output):
             tool_name, params = await get_tool_details(stage_tool_output)
-
-            # Handle different tool names based on the logic
             match tool_name:
                 case "MeetingScheduler":
                     tool_output = await calendly_meeting()
@@ -234,20 +230,15 @@ async def process_message(
                 case "PriceInquiry":
                     tool_output = await fetch_product_price(params)
                 case _:
-                    # Return empty response if no matching tool is found
                     return JSONResponse(content={"response": ""})
 
-            # Append the tool output to the message history
             message_history.append({"role": "api_response", "content": tool_output})
-
-    except ValueError as e:
-        # Handle any errors that occur while calling the tools
+    except ValueError:
         tool_output = (
             "Some Error occurred in calling the tools. "
             "Ask user if it's okay that you callback the user later with "
             "answer of the query"
         )
-        logger.error(f"Error calling tool: {e}")
 
     # Generate the next message for the AI based on the updated stage
     inbound_prompt = AGENT_PROMPT_OUTBOUND_TEMPLATE.format(
@@ -261,18 +252,14 @@ async def process_message(
         conversation_history=json.dumps(message_history, indent=2),
         tools_response=tool_output,
     )
-
-    # Prepare the final message to send to AI
     message_to_send_to_ai_final = [{"role": "system", "content": inbound_prompt}]
     message_to_send_to_ai_final.append({"role": "user", "content": user_input})
 
-    # Generate the AI response
     try:
-        talkBack_response = gen_ai_output(message_to_send_to_ai_final)
-        return JSONResponse(content={"response": talkBack_response})
+        talkback_response = gen_ai_output(message_to_send_to_ai_final)
+        return JSONResponse(content={"response": talkback_response})
     except Exception as e:
         logger.error(f"Error generating AI response: {e}")
-
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="AI generation error",
