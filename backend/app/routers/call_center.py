@@ -229,7 +229,7 @@ async def process_speech(request: Request):
 @router.post("/event")
 async def event(request: Request):
     """Handle status callback from Twilio calls."""
-    call_status = request.form.get("CallStatus", "")
+    call_status = request.values.get("CallStatus", "")
     if call_status in ["completed", "busy", "failed"]:
         logger.info(f"Call completed with status: {call_status}")
     return JSONResponse(content={}, status_code=status.HTTP_204_NO_CONTENT)
