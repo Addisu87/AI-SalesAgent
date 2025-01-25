@@ -1,3 +1,4 @@
+import io
 import os
 import uuid
 
@@ -27,7 +28,7 @@ def text_to_speech(text: str) -> bytes:
     """
     try:
         # Use the ElevenLabs text-to-speech conversion
-        response = client.text_to_speech.convert(
+        response_iterator = client.text_to_speech.convert(
             voice_id=config.VOICE_ID,
             output_format="mp3_22050_32",
             text=text,
@@ -40,14 +41,12 @@ def text_to_speech(text: str) -> bytes:
             ),
         )
 
-        # Check if the response is successful
-        if response.status_code == 200:
-            return response.content
-        else:
-            raise HTTPException(
-                status_code=response.status_code,
-                detail=f"Failed to generate speech: {response.text}",
-            )
+        # Collect the audio content from the iterator using BytesIO
+        audio_content = io.BytesIO()
+        for chunk in response_iterator:
+            audio_content.write(chunk)
+
+        return audio_content.getvalue()
     except Exception as e:
         raise HTTPException(
             status_code=500,
