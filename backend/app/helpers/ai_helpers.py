@@ -30,19 +30,6 @@ client = Groq(api_key=config.GROQ_API_KEY)
 
 
 # Utility Functions
-def get_config():
-    """Directly return config data as a dictionary."""
-    return {
-        "groq_api_key": config.GROQ_API_KEY,
-        "salesperson_name": config.AISALESAGENT_NAME,
-        "company_name": config.COMPANY_NAME,
-        "company_business": config.COMPANY_BUSINESS,
-        "conversation_purpose": config.CONVERSATION_PURPOSE,
-        "company_products_services": config.COMPANY_PRODUCTS_SERVICES,
-        "conversation_stages": ConversationStages,
-    }
-
-
 def gen_ai_output(prompt):
     """Generate AI response based on the provided prompt."""
     try:
@@ -59,9 +46,6 @@ def gen_ai_output(prompt):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="AI generation error",
         )
-
-
-# Utility Functions
 
 
 def clean_response(unfiltered_response_text):
@@ -122,10 +106,9 @@ async def get_tool_details(ai_output):
 
 
 async def initiate_inbound_message():
-    config_dict = get_config()
     initial_prompt = AGENT_PROMPT_INBOUND_TEMPLATE.format(
-        salesperson_name=config_dict["salesperson_name"],
-        company_name=config_dict["company_name"],
+        salesperson_name=config.AISALESAGENT_NAME,
+        company_name=config.COMPANY_NAME,
     )
     return initial_prompt
 
@@ -135,12 +118,11 @@ async def process_inbound_message(
     customer_problem: str,
 ):
     """Process the initial message for the customer."""
-    config_dict = get_config()
     initial_prompt = AGENT_PROMPT_INBOUND_TEMPLATE.format(
-        salesperson_name=config_dict["salesperson_name"],
-        company_name=config_dict["company_name"],
-        company_business=config_dict["company_business"],
-        conversation_purpose=config_dict["conversation_purpose"],
+        salesperson_name=config.AISALESAGENT_NAME,
+        company_name=config.COMPANY_NAME,
+        company_business=config.COMPANY_BUSINESS,
+        conversation_purpose=config.CONVERSATION_PURPOSE,
     )
 
     message_to_send_to_ai = [
@@ -156,7 +138,6 @@ async def process_inbound_message(
 
 
 async def invoke_stage_tool_analysis(message_history: list, user_input: str):
-    config_dict = get_config()
     tools_description = "\n".join(
         [
             f"{tool['name']}: {tool['description']}"
@@ -170,13 +151,13 @@ async def invoke_stage_tool_analysis(message_history: list, user_input: str):
     )
 
     intent_tool_prompt = STAGE_TOOL_ANALYZER_PROMPT.format(
-        salesperson_name=config_dict["salesperson_name"],
-        company_name=config_dict["company_name"],
-        company_business=config_dict["company_business"],
-        conversation_purpose=config_dict["conversation_purpose"],
+        salesperson_name=config.AISALESAGENT_NAME,
+        company_name=config.COMPANY_NAME,
+        company_business=config.COMPANY_BUSINESS,
+        conversation_purpose=config.CONVERSATION_PURPOSE,
         conversation_stages=json.dumps(ConversationStages.INBOUND, indent=2),
         conversation_history=message_history,
-        company_products_services=config_dict["company_products_services"],
+        company_products_services=config.COMPANY_PRODUCTS_SERVICES,
         user_input=user_input,
         tools=tools_description,
     )
@@ -198,8 +179,6 @@ async def process_message(
     current_stage: int,
     stage_type: str,
 ):
-    config_dict = get_config()
-
     # Validate the current stage
     if current_stage < 1 or current_stage > len(ConversationStages.INBOUND):
         raise HTTPException(status_code=400, detail="Invalid current stage.")
@@ -235,12 +214,12 @@ async def process_message(
         )
 
     inbound_prompt = AGENT_PROMPT_OUTBOUND_TEMPLATE.format(
-        salesperson_name=config_dict["salesperson_name"],
-        company_name=config_dict["company_name"],
-        company_business=config_dict["company_business"],
-        conversation_purpose=config_dict["conversation_purpose"],
+        salesperson_name=config.AISALESAGENT_NAME,
+        company_name=config.COMPANY_NAME,
+        company_business=config.COMPANY_BUSINESS,
+        conversation_purpose=config.CONVERSATION_PURPOSE,
         conversation_stage_id=new_stage,  # Updated stage
-        company_products_services=config_dict["company_products_services"],
+        company_products_services=config.COMPANY_PRODUCTS_SERVICES,
         conversation_stages=json.dumps(ConversationStages.OUTBOUND, indent=2),
         conversation_history=json.dumps(message_history, indent=2),
         tools_response=tool_output,
