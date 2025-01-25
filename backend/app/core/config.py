@@ -16,6 +16,8 @@ class GlobalConfig(BaseSettings):
     DATABASE_URL: str | None = None
     DB_FORCE_ROLL_BACK: bool = False
 
+    APP_PUBLIC_URL: str | None = None
+
     # Twilio API Credentials
     TWILIO_ACCOUNT_SID: str | None = None
     TWILIO_AUTH_TOKEN: str | None = None

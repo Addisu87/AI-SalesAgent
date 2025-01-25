@@ -66,11 +66,11 @@ tools_info = {
 }
 
 
-def onsite_appointment():
+async def onsite_appointment():
     return "Onsite appointment booked successfully."
 
 
-def fetch_product_price(membership_type):
+async def fetch_product_price(membership_type):
     # Set up the endpoint and headers
     url = "https://addisuhaile.com/fetchMembership"
     headers = {"Content-Type": "application/json"}
@@ -89,9 +89,9 @@ def fetch_product_price(membership_type):
         return "Failed to fetch price information."
 
 
-def calendly_meeting():
+async def calendly_meeting():
     return "Calendly meeting scheduled successfully."
 
 
-def appointment_availability():
+async def appointment_availability():
     return "Gym appointment available on the specified date and time."
