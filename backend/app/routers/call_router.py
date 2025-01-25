@@ -25,11 +25,15 @@ router = APIRouter()
 
 
 logger = logging.getLogger(__name__)
-redis_client = redis.Redis(host="redis", port=6379, db=0, decode_responses=True)
+redis_client = redis.Redis(
+    host="redis",
+    port=6379,
+    db=0,
+    decode_responses=True,
+)
 
 
 app_public_url = config.APP_PUBLIC_URL
-
 account_sid = config.TWILIO_ACCOUNT_SID
 auth_token = config.TWILIO_AUTH_TOKEN
 client = Client(account_sid, auth_token)
@@ -61,9 +65,9 @@ async def start_call(request: Request):
     data = await request.json()
 
     customer_name = data.get("customer_name", "Valued Customer")
-    customer_phone_number = data.get("customer_phonenumber", "")
+    customer_phone_number = data.get("customer_phoneNumber", "")
     customer_business_details = data.get(
-        "customer_businessdetails", "No details provided."
+        "customer_businessDetails", "No details provided."
     )
 
     # Call AI to generate the initial response.
@@ -154,11 +158,12 @@ async def process_speech(request: Request):
     """Process customer's speech input and generates a response."""
     try:
         # Extract speech input and CallSid
-        speech_result = request.form().get("SpeechResult", "").strip()
-        call_sid = request.query_params.get("CallSid", "default_sid")
+        form = await request.form()
+        speech_result = form.get("SpeechResult", "").strip()
+        call_sid = str(form.get("CallSid", "default_sid"))
 
         # Retrieve message history from Redis
-        message_history_json = redis_client.get(call_sid)
+        message_history_json = await redis_client.get(call_sid)
         message_history = (
             json.loads(message_history_json) if message_history_json else []
         )
@@ -226,4 +231,4 @@ async def event(request: Request):
     call_status = request.form.get("CallStatus", "")
     if call_status in ["completed", "busy", "failed"]:
         logger.info(f"Call completed with status: {call_status}")
-    return JSONResponse(status_code=status.HTTP_204_NO_CONTENT)
+    return JSONResponse(content={}, status_code=status.HTTP_204_NO_CONTENT)

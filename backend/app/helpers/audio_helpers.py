@@ -1,10 +1,10 @@
-import io
 import os
 import uuid
+from io import BytesIO
 
 from elevenlabs import VoiceSettings
 from elevenlabs.client import ElevenLabs
-from fastapi import HTTPException
+from fastapi import HTTPException, status
 
 from app.core.config import config
 
@@ -42,14 +42,18 @@ def text_to_speech(text: str) -> bytes:
         )
 
         # Collect the audio content from the iterator using BytesIO
-        audio_content = io.BytesIO()
+        # Create a BytesIO object to hold audio dat
+        audio_content = BytesIO()
         for chunk in response_iterator:
             audio_content.write(chunk)
+
+        # Reset the stream to the beginning
+        audio_content.seek(0)
 
         return audio_content.getvalue()
     except Exception as e:
         raise HTTPException(
-            status_code=500,
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"An error occurred during text-to-speech conversion: {str(e)}",
         )
 
@@ -85,5 +89,6 @@ def save_audio_file(audio_data: bytes) -> str:
         return file_path
     except Exception as e:
         raise HTTPException(
-            status_code=500, detail=f"Failed to save audio file: {str(e)}"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to save audio file: {str(e)}",
         )

@@ -4,10 +4,9 @@ import os
 import threading
 import time
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import JSONResponse
 from groq import Groq
-from openai import OpenAI
 
 from app.core.config import config
 from app.helpers.tools_helpers import (
@@ -24,6 +23,9 @@ from app.prompts.agent_prompts import (
 )
 from app.prompts.conversation_stages import ConversationStages, update_stage
 
+# from openai import OpenAI
+
+
 router = APIRouter()
 
 logger = logging.getLogger(__name__)
@@ -33,7 +35,7 @@ client = Groq(
 )
 
 
-client = OpenAI()
+# client = OpenAI()
 
 
 # Utility Functions
@@ -61,7 +63,10 @@ def gen_ai_output(prompt):
         return response.choices[0].message.content
     except Exception as e:
         logger.error(f"Error generating AI output: {e}")
-        raise HTTPException(status_code=500, detail="AI generation error")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="AI generation error",
+        )
 
 
 # Utility Functions
@@ -210,9 +215,7 @@ async def process_message(
     new_stage = update_stage(stage_type, current_stage, user_input)
 
     # Proceed with the rest of the logic based on the updated stage
-    stage_tool_output = await invoke_stage_tool_analysis(
-        message_history, user_input, config
-    )
+    stage_tool_output = invoke_stage_tool_analysis(message_history, user_input, config)
 
     tool_output = ""
     try:
