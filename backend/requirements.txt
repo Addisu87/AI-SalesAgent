@@ -4,7 +4,6 @@ elevenlabs
 python-dotenv
 langchain-core
 redis
-openai
 groq
 assemblyai
 jinja2
