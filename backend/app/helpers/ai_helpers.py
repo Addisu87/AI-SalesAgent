@@ -26,8 +26,8 @@ from groq import Groq
 
 
 router = APIRouter()
-
 logger = logging.getLogger(__name__)
+
 
 client = Groq(api_key=config.GROQ_API_KEY)
 
@@ -52,7 +52,8 @@ def gen_ai_output(prompt):
     """Generate AI response based on the provided prompt."""
     try:
         response = client.chat.completions.create(
-            model="gpt-4o-mini",
+            # model="gpt-4o-mini",
+            model="llama-3.3-70b-versatile",
             messages=prompt,
             temperature=0.5,
             max_tokens=150,
@@ -212,7 +213,9 @@ async def process_message(
     new_stage = update_stage(stage_type, current_stage, user_input)
 
     # Proceed with the rest of the logic based on the updated stage
-    stage_tool_output = invoke_stage_tool_analysis(message_history, user_input, config)
+    stage_tool_output = await invoke_stage_tool_analysis(
+        message_history, user_input, config
+    )
 
     tool_output = ""
     try:
