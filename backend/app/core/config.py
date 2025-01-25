@@ -1,21 +1,19 @@
-import os
 from functools import lru_cache
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
+# Define the base configuration class
 class BaseConfig(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
-    # Default ENV_STATE to "dev" if not provided
-    ENV_STATE: str = os.getenv("ENV_STATE", "dev")
+    ENV_STATE: str | None = None  # ENV_STATE will be read from the environment
 
 
-# Define the configuration settings class
-class GlobalConfig(BaseSettings):
+# Define the global configuration settings class
+class GlobalConfig(BaseConfig):
     DATABASE_URL: str | None = None
     DB_FORCE_ROLL_BACK: bool = False
-
     APP_PUBLIC_URL: str | None = None
 
     # Twilio API Credentials
@@ -23,8 +21,7 @@ class GlobalConfig(BaseSettings):
     TWILIO_AUTH_TOKEN: str | None = None
     TWILIO_PHONE_NUMBER: str | None = None
 
-    # OpenAI API Credentials
-    OPENAI_API_KEY: str | None = None
+    # Groq API Credentials
     GROQ_API_KEY: str | None = None
 
     # Eleven Labs API Credentials
@@ -55,4 +52,8 @@ def get_config(env_state: str):
     return configs[env_state]()
 
 
-config = get_config(BaseConfig().ENV_STATE)
+# Get the ENV_STATE value from the environment (or default to 'dev' if not set)
+env_state = BaseConfig().ENV_STATE or "dev"
+
+# Load the appropriate configuration
+config = get_config(env_state)

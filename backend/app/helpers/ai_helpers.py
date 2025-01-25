@@ -23,6 +23,7 @@ from fastapi.responses import JSONResponse
 from groq import Groq
 
 router = APIRouter()
+
 logger = logging.getLogger(__name__)
 
 
@@ -32,7 +33,7 @@ client = Groq(api_key=config.GROQ_API_KEY)
 # Utility Functions
 def get_config():
     return {
-        "openai_api_key": config.OPENAI_API_KEY,
+        "groq_api_key": config.GROQ_API_KEY,
         "salesperson_name": config.AISALESAGENT_NAME,
         "company_name": config.COMPANY_NAME,
         "company_business": config.COMPANY_BUSINESS,
@@ -253,12 +254,6 @@ async def process_message(
         talkback_response = gen_ai_output(message_to_send_to_ai_final)
         return JSONResponse(content={"response": talkback_response})
     except Exception as e:
-        logger.error(f"Error generating AI response: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="AI generation error",
-        )
-
         logger.error(f"Error generating AI response: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
