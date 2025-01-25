@@ -1,13 +1,14 @@
 import os
 import uuid
 
-from app.core.config import Config
 from elevenlabs import VoiceSettings
 from elevenlabs.client import ElevenLabs
 from fastapi import HTTPException
 
+from app.core.config import config
+
 # Initialize ElevenLabs client
-client = ElevenLabs(api_key=Config.ELEVENLABS_API_KEY)
+client = ElevenLabs(api_key=config.ELEVENLABS_API_KEY)
 
 
 def text_to_speech(text: str) -> bytes:
@@ -27,7 +28,7 @@ def text_to_speech(text: str) -> bytes:
     try:
         # Use the ElevenLabs text-to-speech conversion
         response = client.text_to_speech.convert(
-            voice_id=Config.VOICE_ID,
+            voice_id=config.VOICE_ID,
             output_format="mp3_22050_32",
             text=text,
             model_id="eleven_turbo_v2_5",
