@@ -84,7 +84,7 @@ def get_conversation_stage(ai_output):
     """Extract conversation stage from AI output."""
     try:
         data = json.loads(ai_output)
-        return int(data.get("conversation_stage_id"))
+        return int(data.get("current_stage"))
     except json.JSONDecodeError:
         raise ValueError("Invalid JSON format in AI output.")
 
@@ -117,7 +117,7 @@ async def initiate_inbound_message():
 async def process_inbound_message(
     customer_name: str,
     customer_problem: str,
-    conversation_stage_id: int = 1,
+    current_stage: int = 1,
 ):
     """Process the initial message for the customer."""
     initial_prompt = AGENT_PROMPT_INBOUND_TEMPLATE.format(
@@ -126,7 +126,7 @@ async def process_inbound_message(
         company_business=config.COMPANY_BUSINESS,
         conversation_purpose=config.CONVERSATION_PURPOSE,
         company_products_services=config.COMPANY_PRODUCTS_SERVICES,
-        conversation_stage_id=conversation_stage_id,
+        current_stage=current_stage,
         conversation_history="",
         tools_response="",
         user_input="",
@@ -197,6 +197,7 @@ async def process_message(
     stage_tool_output = await invoke_stage_tool_analysis(message_history, user_input)
 
     tool_output = ""
+
     try:
         if is_tool_required(stage_tool_output):
             tool_name, params = await get_tool_details(stage_tool_output)
@@ -225,7 +226,7 @@ async def process_message(
         company_name=config.COMPANY_NAME,
         company_business=config.COMPANY_BUSINESS,
         conversation_purpose=config.CONVERSATION_PURPOSE,
-        conversation_stage_id=new_stage,  # Updated stage
+        current_stage=new_stage,  # Updated stage
         company_products_services=config.COMPANY_PRODUCTS_SERVICES,
         conversation_stages=json.dumps(ConversationStages.OUTBOUND, indent=2),
         conversation_history=json.dumps(message_history, indent=2),
