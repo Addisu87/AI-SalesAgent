@@ -141,7 +141,7 @@ async def process_inbound_message(
     ]
 
     response = gen_ai_output(message_to_send_to_ai)
-    return JSONResponse(content={"response": response})
+    return response
 
 
 async def invoke_stage_tool_analysis(message_history: list, user_input: str):

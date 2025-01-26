@@ -72,15 +72,22 @@ async def start_call(request: Request):
         "customer_businessDetails", "No details provided."
     )
 
-    # Call AI to generate the initial response.
-    ai_message = await process_inbound_message(customer_name, customer_business_details)
+    # Start with the first inbound conversation stage
+    current_stage = 1
+
+    # Generate the initial AI response
+    ai_message = await process_inbound_message(
+        customer_name, customer_business_details, current_stage
+    )
+    # Clean the response (ensure it's a string)
     initial_message = clean_response(ai_message)
 
+    # Convert AI message to speech
     audio_data = text_to_speech(initial_message)
     audio_file_path = save_audio_file(audio_data)
     audio_filename = os.path.basename(audio_file_path)
 
-    # Update message history
+    # Update message history with the first conversation interaction
     initial_transcript = (
         f"Customer Name: {customer_name}. "
         f"Customer's business details: {customer_business_details}"
@@ -92,15 +99,19 @@ async def start_call(request: Request):
         ]
     )
 
+    # Store the message history in Redis
     redis_client.set(unique_id, json.dumps(message_history))
 
+    # Set up the Twilio response
     response = VoiceResponse()
     audio_url = request.url_for("serve_audio", filename=audio_filename, _external=True)
     response.play(audio_url)
 
+    # Redirect to gather input for the next stage of the conversation
     gather_url = request.url_for("gather_input", _external=True, CallSid=unique_id)
     response.redirect(gather_url)
 
+    # Initiate the call using Twilio API
     call = client.calls.create(
         twiml=str(response),
         to=customer_phone_number,
@@ -109,6 +120,7 @@ async def start_call(request: Request):
         status_callback=app_public_url + "/event",
         status_callback_method="POST",
     )
+
     return JSONResponse({"message": "Call initiated", "call_sid": call.sid})
 
 

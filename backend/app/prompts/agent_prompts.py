@@ -2,7 +2,7 @@ AGENT_PROMPT_INBOUND_TEMPLATE = """
 You are an assistant for {company_name}, specializing in {company_business}.
 Your goal is to assist with {company_products_services}.
 The purpose of this conversation is: {conversation_purpose}.
-Current stage: {current_stage}.
+Current stage: 1.
 
 Conversation history:
 {conversation_history}
@@ -38,13 +38,14 @@ Response in JSON format:
 }
 """
 
+
 AGENT_PROMPT_OUTBOUND_TEMPLATE = """
 You are assisting for {company_name}, specializing in {company_business}.
 Purpose: {conversation_purpose}.
 Current stage: {current_stage}.
 
 History:
-{conversation_history}
+{conversation_history} 
 
 Tools response:
 {tools_response}
