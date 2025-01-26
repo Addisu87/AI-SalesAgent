@@ -1,4 +1,3 @@
-# Gym-Specific Conversation Stages
 class ConversationStages:
     INBOUND = {
         1: "Goal Identification",
@@ -29,18 +28,31 @@ class ConversationStages:
             return None  # No further stage
 
 
-def update_stage(stage_type: str, current_stage: int, user_input: str) -> int:
-    """Update the current stage based on user input."""
-    if stage_type == "inbound":
-        if "workout" in user_input.lower():
-            return 2  # Workout Recommendation
-        elif "nutrition" in user_input.lower():
-            return 3  # Nutrition Advice
-        elif "motivation" in user_input.lower() or "struggling" in user_input.lower():
-            return 5  # Motivation & Follow-Up
-        elif "form" in user_input.lower() or "technique" in user_input.lower():
-            return 4  # Technique & Form Guidance
-    else:  # Outbound logic
-        return current_stage + 1  # Proceed to the next stage
+def determine_stage(stage_type: str, current_stage: int, user_input: str) -> int:
+    """
+    Determine the next conversation stage based on user input.
 
-    return current_stage  # Default: keep the current stage
+    Args:
+        stage_type (str): 'inbound' or 'outbound'.
+        current_stage (int): Current stage ID.
+        user_input (str): User's latest input.
+
+    Returns:
+        int: Updated stage ID.
+    """
+    user_input = user_input.lower()
+
+    if stage_type == "inbound":
+        if "workout" in user_input:
+            return 2  # Workout Recommendation
+        elif "nutrition" in user_input or "diet" in user_input:
+            return 3  # Nutrition Advice
+        elif "form" in user_input or "technique" in user_input:
+            return 4  # Technique & Form Guidance
+        elif "motivation" in user_input or "struggling" in user_input:
+            return 5  # Motivation & Follow-Up
+    else:  # Outbound logic
+        next_stage = ConversationStages.next_stage(stage_type, current_stage)
+        return current_stage + 1 if next_stage else current_stage
+
+    return current_stage

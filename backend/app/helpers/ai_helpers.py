@@ -4,6 +4,10 @@ import os
 import threading
 import time
 
+from fastapi import APIRouter, HTTPException, status
+from fastapi.responses import JSONResponse
+from groq import Groq
+
 from app.core.config import config
 from app.helpers.tools_helpers import (
     appointment_availability,
@@ -17,10 +21,7 @@ from app.prompts.agent_prompts import (
     AGENT_PROMPT_OUTBOUND_TEMPLATE,
     STAGE_TOOL_ANALYZER_PROMPT,
 )
-from app.prompts.conversation_stages import ConversationStages, update_stage
-from fastapi import APIRouter, HTTPException, status
-from fastapi.responses import JSONResponse
-from groq import Groq
+from app.prompts.conversation_stages import ConversationStages, determine_stage
 
 router = APIRouter()
 
@@ -116,6 +117,7 @@ async def initiate_inbound_message():
 async def process_inbound_message(
     customer_name: str,
     customer_problem: str,
+    conversation_stage_id: int = 1,
 ):
     """Process the initial message for the customer."""
     initial_prompt = AGENT_PROMPT_INBOUND_TEMPLATE.format(
@@ -123,6 +125,11 @@ async def process_inbound_message(
         company_name=config.COMPANY_NAME,
         company_business=config.COMPANY_BUSINESS,
         conversation_purpose=config.CONVERSATION_PURPOSE,
+        company_products_services=config.COMPANY_PRODUCTS_SERVICES,
+        conversation_stage_id=conversation_stage_id,
+        conversation_history="",
+        tools_response="",
+        user_input="",
     )
 
     message_to_send_to_ai = [
@@ -184,7 +191,7 @@ async def process_message(
         raise HTTPException(status_code=400, detail="Invalid current stage.")
 
     # Update stage based on user input
-    new_stage = update_stage(stage_type, current_stage, user_input)
+    new_stage = determine_stage(stage_type, current_stage, user_input)
 
     # Proceed with the rest of the logic based on the updated stage
     stage_tool_output = await invoke_stage_tool_analysis(message_history, user_input)

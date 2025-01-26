@@ -4,6 +4,12 @@ import os
 import uuid
 
 import redis
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Request, status
+from fastapi.responses import FileResponse, JSONResponse
+from twilio.rest import Client
+from twilio.twiml.voice_response import Gather, VoiceResponse
+from werkzeug.utils import secure_filename
+
 from app.core.config import config
 from app.helpers.ai_helpers import (
     clean_response,
@@ -13,12 +19,7 @@ from app.helpers.ai_helpers import (
     process_message,
 )
 from app.helpers.audio_helpers import save_audio_file, text_to_speech
-from app.prompts.conversation_stages import update_stage
-from fastapi import APIRouter, BackgroundTasks, HTTPException, Request, status
-from fastapi.responses import FileResponse, JSONResponse
-from twilio.rest import Client
-from twilio.twiml.voice_response import Gather, VoiceResponse
-from werkzeug.utils import secure_filename
+from app.prompts.conversation_stages import determine_stage
 
 router = APIRouter()
 
@@ -74,6 +75,7 @@ async def start_call(request: Request):
     # Call AI to generate the initial response.
     ai_message = await process_inbound_message(customer_name, customer_business_details)
     initial_message = clean_response(ai_message)
+
     audio_data = text_to_speech(initial_message)
     audio_file_path = save_audio_file(audio_data)
     audio_filename = os.path.basename(audio_file_path)
@@ -160,7 +162,7 @@ async def process_speech(request: Request):
     try:
         # Extract speech input and CallSid
         form = await request.form()
-        speech_result = form.get("SpeechResult", "").strip()
+        speech_result = form.get("SpeechResult", "").strip()  # type: ignore
         call_sid = str(form.get("CallSid", "default_sid"))
 
         # Retrieve message history from Redis
@@ -176,7 +178,7 @@ async def process_speech(request: Request):
         stage_type = "inbound" if "inbound" in call_sid.lower() else "outbound"
 
         # Update the stage based on user input
-        updated_stage = update_stage(stage_type, current_stage, speech_result)
+        updated_stage = determine_stage(stage_type, current_stage, speech_result)
         message_history.append(
             {
                 "role": "user",
@@ -207,7 +209,7 @@ async def process_speech(request: Request):
         )
 
         # End the call if the conversation has ended
-        if "<END_OF_CALL>" in ai_response_text:
+        if isinstance(ai_response_text, str) and "<END_OF_CALL>" in ai_response_text:
             logger.info("The conversation has ended.")
             resp.hangup()
 
@@ -232,6 +234,4 @@ async def event(request: Request):
     call_status = request.values.get("CallStatus", "")
     if call_status in ["completed", "busy", "failed"]:
         logger.info(f"Call completed with status: {call_status}")
-    return JSONResponse(content={}, status_code=status.HTTP_204_NO_CONTENT)
-    return JSONResponse(content={}, status_code=status.HTTP_204_NO_CONTENT)
     return JSONResponse(content={}, status_code=status.HTTP_204_NO_CONTENT)
