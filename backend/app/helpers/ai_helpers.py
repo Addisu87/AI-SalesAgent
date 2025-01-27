@@ -11,7 +11,7 @@ from app.core.config import config
 from app.helpers.tools_helpers import (
     appointment_availability,
     calendly_meeting,
-    fetch_product_price,
+    fetch_price,
     onsite_appointment,
     tools_info,
 )
@@ -203,7 +203,10 @@ async def process_message(
                 case "GymAppointmentAvailability":
                     tool_output = await appointment_availability()
                 case "PriceInquiry":
-                    tool_output = await fetch_product_price(params)
+                    if params is not None:
+                        tool_output = await fetch_price(**params)
+                    else:
+                        tool_output = "Invalid parameters for Price Inquiry."
                 case _:
                     return JSONResponse(content={"response": ""})
 

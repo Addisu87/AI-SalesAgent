@@ -1,10 +1,17 @@
 import logging
 
 import httpx
+from fastapi import APIRouter, HTTPException
+
+from app.models.price_request import PriceRequest
 
 # Logger Setup
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
+
+
+router = APIRouter()
+
 
 tools_info = {
     "MeetingScheduler": {
@@ -50,32 +57,33 @@ async def appointment_availability():
 
 
 # Function to fetch product price from an API
-async def fetch_product_price(membership_type):
-    """Fetch price for a gym membership type using httpx."""
-    if not membership_type:
-        return "Error: Membership type is required."
-
-    # Set up the endpoint and payload
-    url = "https://addisuhaile.com/fetchMembership"
+@router.post("/fetch-price")
+async def fetch_price(request: PriceRequest):
+    """Fetch price for a gym membership type."""
+    url = "https://addisuhaile.app.n8n.cloud/webhook/membership"
     payload = {
-        "membership_type": membership_type,
-        "currency": "USD",
+        "membership_type": request.membership_type,
+        "currency": request.currency,
     }
 
     try:
         async with httpx.AsyncClient() as client:
             response = await client.post(url, json=payload)
-            response.raise_for_status()  # Will raise for non-2xx responses
+            response.raise_for_status()
 
-            # Parse the JSON response to get the price
             price_info = response.json()
             price = price_info.get("price")
 
-            # Return the price if available
             if price:
-                return f"The price for {membership_type} is {price} USD."
+                return (
+                    f"The price for {request.membership_type} membership is ${price}."
+                )
             else:
-                return f"Price information for {membership_type} is unavailable."
-    except (httpx.RequestError, httpx.HTTPStatusError) as e:
-        logger.error(f"Error fetching price for {membership_type}: {e}")
-        return "An error occurred while fetching membership price."
+                raise HTTPException(
+                    status_code=404, detail="Price information not available."
+                )
+    except httpx.RequestError as e:
+        logger.error(f"Error fetching price: {e}")
+        raise HTTPException(
+            status_code=500, detail="An error occurred while fetching the price."
+        )
