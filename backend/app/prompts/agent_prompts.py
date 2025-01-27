@@ -45,7 +45,7 @@ Purpose: {conversation_purpose}.
 Current stage: {current_stage}.
 
 History:
-{conversation_history} 
+{conversation_history}
 
 Tools response:
 {tools_response}

@@ -26,7 +26,7 @@ router = APIRouter()
 
 logger = logging.getLogger(__name__)
 redis_client = redis.Redis(
-    host="redis",
+    host="localhost",
     port=6379,
     db=0,
     decode_responses=True,
@@ -56,6 +56,11 @@ async def serve_audio(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Audio file not found"
         )
+
+
+def get_audio_url(request: Request, filename: str) -> str:
+    audio_url = router.url_path_for("serve_audio", filename=secure_filename(filename))
+    return f"{request.base_url}{audio_url}"
 
 
 @router.post("/start-call")
@@ -102,14 +107,23 @@ async def start_call(request: Request):
     # Store the message history in Redis
     redis_client.set(unique_id, json.dumps(message_history))
 
-    # Set up the Twilio response
+    # Generate audio URL
+    audio_url = get_audio_url(request, audio_filename)
+
+    # Log for debugging
+    logger.debug(f"Audio URL generated: {audio_url}")
+
+    # Twilio response
     response = VoiceResponse()
-    audio_url = request.url_for("serve_audio", filename=audio_filename, _external=True)
     response.play(audio_url)
 
     # Redirect to gather input for the next stage of the conversation
-    gather_url = request.url_for("gather_input", _external=True, CallSid=unique_id)
-    response.redirect(gather_url)
+    # redirect_url = f"{app_gather_url}?CallSid={unique_id}"
+    redirect_url = request.url_for(
+        "gather_input",
+        CallSid=unique_id,
+    )
+    response.redirect(redirect_url)
 
     # Initiate the call using Twilio API
     call = client.calls.create(
@@ -129,9 +143,7 @@ async def gather_input(request: Request):
     """Endpoint to gather customer speech input."""
     call_sid = request.query_params.get("CallSid", "default_sid")
     resp = VoiceResponse()
-    process_speech_url = request.url_for(
-        "process_speech", _external=True, CallSid=call_sid
-    )
+    process_speech_url = request.url_for("process_speech", CallSid=call_sid)
     gather = Gather(
         input="speech",
         action=process_speech_url,
@@ -140,7 +152,7 @@ async def gather_input(request: Request):
     )
     resp.append(gather)
 
-    gather_url = request.url_for("gather_input", _external=True, CallSid=call_sid)
+    gather_url = request.url_for("gather_input", CallSid=call_sid)
     resp.redirect(gather_url)
     return str(resp)
 
@@ -157,11 +169,7 @@ async def gather_input_inbound(call_sid: str, request: Request):
     audio_file_path = save_audio_file(audio_data)
     audio_filename = os.path.basename(audio_file_path)
 
-    resp.play(
-        request.url_for(
-            "serve_audio", filename=secure_filename(audio_filename), _external=True
-        )
-    )
+    resp.play(get_audio_url(request, audio_filename))
     message_history.append({"role": "assistant", "content": agent_response})
     redis_client.set(unique_id, json.dumps(message_history))
     resp.redirect(request.url_for("gather_input", CallSid=call_sid))
@@ -212,13 +220,7 @@ async def process_speech(request: Request):
 
         # Prepare Twillo VoiceResponse
         resp = VoiceResponse()
-        resp.play(
-            request.url_for(
-                "serve_audio",
-                filename=secure_filename(audio_filename),
-                CallSid=call_sid,
-            )
-        )
+        resp.play(get_audio_url(request, audio_filename))
 
         # End the call if the conversation has ended
         if isinstance(ai_response_text, str) and "<END_OF_CALL>" in ai_response_text:

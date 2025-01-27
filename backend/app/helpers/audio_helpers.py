@@ -30,18 +30,17 @@ def text_to_speech(text: str) -> bytes:
         # Use the ElevenLabs text-to-speech conversion
         response_iterator = client.text_to_speech.convert(
             voice_id=config.VOICE_ID,
-            output_format="mp3_22050_32",
+            output_format="mp3_44100_128",
             text=text,
-            model_id="eleven_turbo_v2_5",
+            model_id="eleven_multilingual_v2",
             voice_settings=VoiceSettings(
                 stability=0.5,
-                similarity_boost=0.75,
+                similarity_boost=0.8,
                 style=0.5,
                 use_speaker_boost=True,
             ),
         )
 
-        # Collect the audio content from the iterator using BytesIO
         # Create a BytesIO object to hold audio dat
         audio_content = BytesIO()
         for chunk in response_iterator:
