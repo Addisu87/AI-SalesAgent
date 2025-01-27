@@ -19,6 +19,7 @@ from app.helpers.ai_helpers import (
     process_message,
 )
 from app.helpers.audio_helpers import save_audio_file, text_to_speech
+from app.models.call import StartCall
 from app.prompts.conversation_stages import determine_stage
 
 router = APIRouter()
@@ -60,22 +61,20 @@ async def serve_audio(
 
 def get_audio_url(request: Request, filename: str) -> str:
     audio_url = router.url_path_for("serve_audio", filename=secure_filename(filename))
-    return f"{request.base_url}{audio_url}"
+    return str(str(request.base_url).rstrip("/") + audio_url)
 
 
 @router.post("/start-call")
-async def start_call(request: Request):
+async def start_call(request: StartCall, request_context: Request):
     """Endpoint to initiate a call."""
     logger.info("Request received")
     unique_id = str(uuid.uuid4())
     message_history = []
-    data = await request.json()
 
-    customer_name = data.get("customer_name", "Valued Customer")
-    customer_phone_number = data.get("customer_phoneNumber", "")
-    customer_business_details = data.get(
-        "customer_businessDetails", "No details provided."
-    )
+    # Extract fields directly from the StartCall model
+    customer_name = request.customer_name
+    customer_phone_number = request.customer_phoneNumber
+    customer_business_details = request.customer_businessDetails
 
     # Start with the first inbound conversation stage
     current_stage = 1
@@ -84,6 +83,7 @@ async def start_call(request: Request):
     ai_message = await process_inbound_message(
         customer_name, customer_business_details, current_stage
     )
+
     # Clean the response (ensure it's a string)
     initial_message = clean_response(ai_message)
 
@@ -108,7 +108,7 @@ async def start_call(request: Request):
     redis_client.set(unique_id, json.dumps(message_history))
 
     # Generate audio URL
-    audio_url = get_audio_url(request, audio_filename)
+    audio_url = get_audio_url(request_context, audio_filename)
 
     # Log for debugging
     logger.debug(f"Audio URL generated: {audio_url}")
@@ -118,11 +118,7 @@ async def start_call(request: Request):
     response.play(audio_url)
 
     # Redirect to gather input for the next stage of the conversation
-    # redirect_url = f"{app_gather_url}?CallSid={unique_id}"
-    redirect_url = request.url_for(
-        "gather_input",
-        CallSid=unique_id,
-    )
+    redirect_url = f"{app_public_url}/gather?CallSid={unique_id}"
     response.redirect(redirect_url)
 
     # Initiate the call using Twilio API
@@ -138,7 +134,7 @@ async def start_call(request: Request):
     return JSONResponse({"message": "Call initiated", "call_sid": call.sid})
 
 
-@router.post("/gather")
+@router.post("/gather", name="gather_input")
 async def gather_input(request: Request):
     """Endpoint to gather customer speech input."""
     call_sid = request.query_params.get("CallSid", "default_sid")
