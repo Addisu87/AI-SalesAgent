@@ -4,7 +4,7 @@ import os
 import uuid
 
 import redis
-from fastapi import APIRouter, BackgroundTasks, HTTPException, Request, status
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Request, status, Query
 from fastapi.responses import FileResponse, JSONResponse
 from twilio.rest import Client
 from twilio.twiml.voice_response import Gather, VoiceResponse
@@ -133,11 +133,10 @@ async def start_call(request: StartCall, request_context: Request):
 
 
 @router.post("/gather", name="gather_input")
-async def gather_input(request: Request):
+async def gather_input(call_sid: str = Query(..., alias="CallSid")):
     """Endpoint to gather customer speech input."""
-    call_sid = request.query_params.get("CallSid", "default_sid")
     resp = VoiceResponse()
-    process_speech_url = request.url_for("process_speech", CallSid=call_sid)
+    process_speech_url = router.url_path_for("process_speech", CallSid=call_sid)
     gather = Gather(
         input="speech",
         action=process_speech_url,
@@ -146,7 +145,7 @@ async def gather_input(request: Request):
     )
     resp.append(gather)
 
-    gather_url = request.url_for("gather_input", CallSid=call_sid)
+    gather_url = router.url_path_for("gather_input", CallSid=call_sid)
     resp.redirect(gather_url)
     return str(resp)
 

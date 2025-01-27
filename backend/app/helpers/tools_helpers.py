@@ -1,66 +1,37 @@
-import requests
+import logging
+
+import httpx
+
+# Logger Setup
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 tools_info = {
     "MeetingScheduler": {
         "name": "MeetingScheduler",
-        "description": (
-            "Schedules a meeting with the user using an online calendar tool "
-            "like Calendly."
-        ),
+        "description": "Schedules a meeting using tools like Calendly.",
         "parameters": {
-            "date": "string in YYYY-MM-DD format",
-            "time": "string in HH:MM format",
-            "timezone": "string (e.g., 'UTC', 'PST', etc.)",
+            "date": "YYYY-MM-DD",
+            "time": "HH:MM",
+            "timezone": "e.g., 'UTC'",
         },
     },
     "OnsiteAppointment": {
         "name": "OnsiteAppointment",
         "description": "Books an onsite appointment for the user.",
-        "parameters": {
-            "location": "string specifying the appointment location",
-            "date": "string in YYYY-MM-DD format",
-            "time": "string in HH:MM format",
-        },
+        "parameters": {"location": "string", "date": "YYYY-MM-DD", "time": "HH:MM"},
     },
     "GymAppointmentAvailability": {
         "name": "GymAppointmentAvailability",
-        "description": "Checks the availability of gym appointments.",
-        "parameters": {
-            "date": "string in YYYY-MM-DD format",
-            "time_slot": (
-                "string indicating preferred time range "
-                "(e.g., 'morning', 'afternoon', 'evening')"
-            ),
-        },
+        "description": "Checks gym appointment availability.",
+        "parameters": {"date": "YYYY-MM-DD", "time_slot": "morning/afternoon/evening"},
     },
     "PriceInquiry": {
         "name": "PriceInquiry",
-        "description": "Fetches the price for a product or service.",
+        "description": "Fetches the price for a specific membership type.",
         "parameters": {
-            "product_id": "string representing the unique identifier for the product",
-            "currency": "string representing the currency code (e.g., 'USD', 'EUR')",
-        },
-    },
-    "WorkoutPlanGenerator": {
-        "name": "WorkoutPlanGenerator",
-        "description": "Generates a customized workout plan for the user.",
-        "parameters": {
-            "goal": "string (e.g., 'weight loss', 'muscle gain')",
-            "fitness_level": "string (e.g., 'beginner', 'intermediate', 'advanced')",
-            "preferences": (
-                "string describing exercise preferences "
-                "(e.g., 'bodyweight', 'short workouts')"
-            ),
-        },
-    },
-    "NutritionAdvisor": {
-        "name": "NutritionAdvisor",
-        "description": (
-            "Provides dietary advice or meal plans based on user preferences."
-        ),
-        "parameters": {
-            "goal": "string (e.g., 'weight loss', 'muscle gain')",
-            "diet_type": "string (e.g., 'vegetarian', 'keto', 'balanced')",
+            "membership_type": "Silver/Gold/Platinum",
+            "currency": "USD/EUR",
         },
     },
 }
@@ -70,28 +41,41 @@ async def onsite_appointment():
     return "Onsite appointment booked successfully."
 
 
-async def fetch_product_price(membership_type):
-    # Set up the endpoint and headers
-    url = "https://addisuhaile.com/fetchMembership"
-    headers = {"Content-Type": "application/json"}
-
-    #  Prepare the data payload with the membership type
-    data = {"membership_type": membership_type}
-
-    # Send a POST request to the API
-    response = requests.post(url, headers=headers, json=data)
-
-    # Check if the response is successful
-    if response.status_code == 200:
-        price_info = response.json()
-        return f"The price for {membership_type} is {price_info.get('price')}."
-    else:
-        return "Failed to fetch price information."
-
-
 async def calendly_meeting():
     return "Calendly meeting scheduled successfully."
 
 
 async def appointment_availability():
     return "Gym appointment available on the specified date and time."
+
+
+# Function to fetch product price from an API
+async def fetch_product_price(membership_type):
+    """Fetch price for a gym membership type using httpx."""
+    if not membership_type:
+        return "Error: Membership type is required."
+
+    # Set up the endpoint and payload
+    url = "https://addisuhaile.com/fetchMembership"
+    payload = {
+        "membership_type": membership_type,
+        "currency": "USD",
+    }
+
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.post(url, json=payload)
+            response.raise_for_status()  # Will raise for non-2xx responses
+
+            # Parse the JSON response to get the price
+            price_info = response.json()
+            price = price_info.get("price")
+
+            # Return the price if available
+            if price:
+                return f"The price for {membership_type} is {price} USD."
+            else:
+                return f"Price information for {membership_type} is unavailable."
+    except (httpx.RequestError, httpx.HTTPStatusError) as e:
+        logger.error(f"Error fetching price for {membership_type}: {e}")
+        return "An error occurred while fetching membership price."
