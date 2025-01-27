@@ -4,7 +4,7 @@ import os
 import uuid
 
 import redis
-from fastapi import APIRouter, BackgroundTasks, HTTPException, Request, status, Query
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Query, Request, status
 from fastapi.responses import FileResponse, JSONResponse
 from twilio.rest import Client
 from twilio.twiml.voice_response import Gather, VoiceResponse
@@ -174,9 +174,8 @@ async def process_speech(request: Request):
     """Process customer's speech input and generates a response."""
     try:
         # Extract speech input and CallSid
-        form = await request.form()
-        speech_result = form.get("SpeechResult", "").strip()  # type: ignore
-        call_sid = str(form.get("CallSid", "default_sid"))
+        speech_result = request.values.get("SpeechResult", "").strip()
+        call_sid = request.query_params.get("CallSid", "default_sid")
 
         # Retrieve message history from Redis
         message_history_json = await redis_client.get(call_sid)
