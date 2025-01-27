@@ -1,8 +1,7 @@
+import asyncio
 import json
 import logging
 import os
-import threading
-import time
 
 from fastapi import APIRouter, HTTPException, status
 from fastapi.responses import JSONResponse
@@ -56,19 +55,14 @@ def clean_response(unfiltered_response_text):
     )
 
 
-def delayed_delete(filename, delay=5):
+async def delayed_delete(filename: str, delay: int = 5):
     """Delete the file after a specified delay in seconds."""
-
-    def attempt_delete():
-        time.sleep(delay)
-        try:
-            os.remove(filename)
-            logger.info(f"Successfully deleted temporary audio file: {filename}")
-        except Exception as error:
-            logger.error(f"Error deleting temporary audio file: {filename} - {error}")
-
-    thread = threading.Thread(target=attempt_delete)
-    thread.start()
+    await asyncio.sleep(delay)
+    try:
+        os.remove(filename)
+        logger.info(f"Successfully deleted temporary audio file: {filename}")
+    except Exception as error:
+        logger.error(f"Error deleting temporary audio file: {filename} - {error}")
 
 
 def is_tool_required(ai_output):

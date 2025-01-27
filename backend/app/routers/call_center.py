@@ -42,17 +42,15 @@ client = Client(account_sid, auth_token)
 
 # Routes
 @router.get("/audio/{filename}")
-async def serve_audio(
-    filename: str, background_tasks: BackgroundTasks, request: Request
-):
+async def serve_audio(filename: str, background_tasks: BackgroundTasks):
     """Serve audio file from directory."""
     directory = "audio_files"
     full_path = os.path.join(directory, filename)
-    try:
-        response = FileResponse(full_path)
+    if os.path.exists(full_path):
+        # Schedule the file deletion in the background
         background_tasks.add_task(delayed_delete, full_path)
-        return response
-    except FileNotFoundError:
+        return FileResponse(full_path)
+    else:
         logger.error(f"Audio file not found: {filename}")
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Audio file not found"
