@@ -75,3 +75,7 @@ docker-compose up
 ```bash
     pip install -e .
 ```
+
+```bash
+    redis-server
+```
