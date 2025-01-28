@@ -3,8 +3,7 @@ import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.routers.call_center import router as audio_router
-
+from app.routers.call_center import router as call_router
 
 # Configure logging
 logging.basicConfig(
@@ -26,7 +25,7 @@ app.add_middleware(
 )
 
 # Include routers
-app.include_router(audio_router)
+app.include_router(call_router)
 
 
 # Default route
