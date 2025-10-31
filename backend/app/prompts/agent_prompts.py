@@ -1,4 +1,5 @@
-from langchain.prompts import PromptTemplate
+from langchain_core.prompts import PromptTemplate
+
 
 # Inbound Template Prompt updated for Membership Plans
 AGENT_PROMPT_INBOUND_TEMPLATE = PromptTemplate.from_template("""
