@@ -177,3 +177,5 @@ cython_debug/
 .vscode/
 *.png
 .ruff_cache
+.dump.rdb
+.DS_Store
